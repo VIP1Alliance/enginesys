@@ -6,11 +6,6 @@ import warnings
 import pandas as pd
 import numpy as np
 
-# from enginesys.helpers import get_asg_ranking
-# from enginesys.helpers import assign_ranking_asg
-# from enginesys.helpers import selected_sectorsdf
-
-
 BASE_DIR = os.getcwd()
 
 def get_asg_ranking() -> pd.DataFrame: return pd.read_excel(os.path.join(BASE_DIR, "data", "rankingASG.xlsx"))
