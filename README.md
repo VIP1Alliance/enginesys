@@ -13,7 +13,7 @@ Enginesys aims to support numerous analisys, including:
 - [ ]
 
 
-## Instalation
+## Installation
 Install the package directly from the repository as follows:
 
 ```python
