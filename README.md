@@ -14,19 +14,23 @@ Enginesys aims to support numerous analisys, including:
 
 
 ## Installation
+
+The current recommended way to install enginesys is from source.
+
+### From source
+```python
+git clone https://github.com/VIP1Alliance/enginesys.git
+cd enginesys
+python3 -m pip install -e .
+```
+
+### Direct (master)
+
 Install the package directly from the repository as follows:
 
 ```python
 pip install git+https://<your_key>@github.com/VIP1Alliance/enginesys.git
 
-```
-
-### Update package
-
-Once the package has received an update, you would want to update your installation. For that purpuse use the following line:
-
-```python
-pip install --upgrade git+https://<your_key>@github.com/VIP1Alliance/enginesys.git
 ```
 
 ## Addition and Maintenance of Code
