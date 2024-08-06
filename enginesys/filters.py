@@ -75,9 +75,9 @@ class Filters:
     def build_filter_threshold(self):
         pass
 
-    # Build filter ASG
+    # Build filter ASG (this filter is just read from external sources)
     def build_filter_asg(self):
-        pass
+        raise ("Not implemented.")
 
     # Load filter threshold 1.6
     @staticmethod
