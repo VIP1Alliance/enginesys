@@ -24,7 +24,7 @@ setup(name="enginesys",
                       'matplotlib-inline==0.1.7',
                       'nbformat==5.10.4',
                       ],
-      python_requires='>=3.12.4',
+      python_requires='>=3.10.11',
       extras_require={
           'testing': [
               'pytest'
