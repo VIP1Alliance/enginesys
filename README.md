@@ -17,7 +17,7 @@ Enginesys aims to support numerous analisys, including:
 Install the package directly from the repository as follows:
 
 ```python
-pip install git+https://<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>@github.com/VIP0Alliance/repositorio.git
+pip install git+https://<your_key>@github.com/VIP1Alliance/enginesys.git
 
 ```
 
@@ -26,7 +26,7 @@ pip install git+https://<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>@github.com/VI
 Once the package has received an update, you would want to update your installation. For that purpuse use the following line:
 
 ```python
-pip install --upgrade git+https://<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>@github.com/VIP0Alliance/repositorio.git
+pip install --upgrade git+https://<your_key>@github.com/VIP1Alliance/enginesys.git
 ```
 
 ## Addition and Maintenance of Code
