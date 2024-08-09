@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
 import unittest
 import pandas as pd
 
-from enginesys.validations import DataFrameFormatter
+from enginesys.validator import DataFrameFormatter
 
 
 class TestDataFrameUtils(unittest.TestCase):
