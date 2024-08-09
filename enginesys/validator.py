@@ -8,7 +8,8 @@ class DataFrameFormatter:
         Initialize the DataFrameFormatter with optional required columns.
 
         Parameters:
-        required_columns (list): List of column names that are required. Default is None.
+        required_columns: list
+            List of column names that are required. Default is None.
         """
         self.required_columns = required_columns if required_columns is not None else []
         
@@ -18,7 +19,8 @@ class DataFrameFormatter:
         Set the required columns for the dataframe.
 
         Parameters:
-        columns (list): List of column names that are required.
+        columns: list
+            List of column names that are required.
         """
         self.required_columns = columns
     
@@ -28,11 +30,15 @@ class DataFrameFormatter:
         """
         Remove columns from the dataframe that contain the word 'Unnamed' in their names.
 
-        Parameters:
-        df (pd.DataFrame): The dataframe from which to remove columns.
+        Parameters
+        ----------
+        df: pd.DataFrame
+            The dataframe from which to remove columns.
 
-        Returns:
-        pd.DataFrame: The dataframe with 'Unnamed' columns removed.
+        Returns
+        -------
+        pd.DataFrame
+            The dataframe with 'Unnamed' columns removed.
         """
         # Filter columns that do not contain 'Unnamed'
         columns_to_keep = [col for col in df.columns if 'Unnamed' not in col]
@@ -45,11 +51,15 @@ class DataFrameFormatter:
         """
         Convert all column names in the dataframe to lowercase.
 
-        Parameters:
-        df (pd.DataFrame): The dataframe with columns to convert.
+        Parameters
+        ----------
+        df: pd.DataFrame
+            The dataframe with columns to convert.
 
-        Returns:
-        pd.DataFrame: The dataframe with column names converted to lowercase.
+        Returns
+        -------
+        pd.DataFrame
+            The dataframe with column names converted to lowercase.
         """
         df.columns = [col.lower() for col in df.columns]
         return df
@@ -60,11 +70,15 @@ class DataFrameFormatter:
         """
         Replace spaces in column names with underscores.
 
-        Parameters:
-        df (pd.DataFrame): The dataframe with columns to modify.
+        Parameters
+        ----------
+        df: pd.DataFrame:
+            The dataframe with columns to modify.
 
-        Returns:
-        pd.DataFrame: The dataframe with column names modified.
+        Returns
+        -------
+        pd.DataFrame
+            The dataframe with column names modified.
         """
         df.columns = [col.replace(' ', '_') for col in df.columns]
         return df
@@ -74,11 +88,15 @@ class DataFrameFormatter:
         """
         Check if the dataframe contains all the required columns.
 
-        Parameters:
-        df (pd.DataFrame): The dataframe to validate.
+        Parameters
+        ----------
+        df: pd.DataFrame
+            The dataframe to validate.
 
-        Returns:
-        bool: True if all required columns are present, False otherwise.
+        Returns
+        -------
+        bool
+            True if all required columns are present, False otherwise.
         """
         input_columns = set(df.columns)
         required_columns = set(self.required_columns)
@@ -91,17 +109,4 @@ class DataFrameFormatter:
         
         return extra_columns, missing_columns
     
-    @staticmethod
-    def replace_column_names(df: pd.DataFrame, column_dict: dict) -> pd.DataFrame:
-        """
-        Replace column names in the dataframe using a dictionary.
-
-        Parameters:
-        df (pd.DataFrame): The dataframe with columns to replace.
-        column_dict (dict): A dictionary where the keys are the current column names and the values are the new column names.
-
-        Returns:
-        pd.DataFrame: The dataframe with replaced column names.
-        """
-        df.rename(columns=column_dict, inplace=True)
-        return df
+    
