@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
+pd.DataFrame()
 
 # ======================================================================================= #
 # ======================= Functions to calculate the GEA indices ======================== #
@@ -374,19 +374,31 @@ class TradeProcessor:
         
         return indices_df
 
-    def get_benchmark_gea_indices(
+    def get_benchmark_index(
         self,
-        monthly_trades_df: pd.DataFrame,
-        assets_prices_df: pd.DataFrame,
-        additional_assets: list = [],
+        prices_df: pd.DataFrame,
+        benchmark: str,
     ):
-        gea_indices_df = self.get_gea_indices(monthly_trades_df)
+        """
+        Calculates the benchmark index based on the given prices DataFrame and benchmark list.
 
-        # Calculate additional asset-specific indices
-        if len(additional_assets) > 0:
-            assets_df = assets_prices_df[additional_assets]
-            price_ratios = assets_df / assets_df.shift(1)
-            benchmark_index_df = price_ratios.cumprod()
-            gea_indices_df = pd.concat([gea_indices_df, benchmark_index_df], axis=1)
+        Parameters
+        ----------
+        prices_df: pd.DataFrame
+            DataFrame containing the prices data.
+        benchmark: list
+            List of columns to be used as the benchmark. Default is an empty list.
 
-        return gea_indices_df[:-1]
+        Returns
+        -------
+        benchmark_index_df: pd.DataFrame
+            DataFrame containing the benchmark index.
+        """
+        if not benchmark in prices_df.columns:
+            raise ValueError("Benchmark not found in prices DataFrame")
+        
+        benchmark_df = prices_df[benchmark]
+        price_ratios = benchmark_df / benchmark_df.shift(1)
+        benchmark_index_df = price_ratios.cumprod()
+
+        return benchmark_index_df[1:]
