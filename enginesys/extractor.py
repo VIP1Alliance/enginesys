@@ -1,5 +1,4 @@
 import calendar
-from hmac import new
 import logging
 import os
 import re
@@ -42,7 +41,35 @@ class DataExtractor:
         }
 
     def download_eodhd_data(self, file_name, tickers, init_date, end_date, period="m", format: str ="pickle", force_download=False):
+        """
+        Downloads data from EODHD API for the given tickers and saves it to a file.
         
+        Parameters
+        ----------
+        file_name: str
+            The name of the file to save the downloaded data.
+        tickers: list
+            A list of ticker symbols for the stocks to download data for.
+        init_date: str
+            The initial date for the data to download in the format 'YYYY-MM-DD'.
+        end_date: str
+            The end date for the data to download in the format 'YYYY-MM-DD'.
+        period: str, optional
+            The period for the data to download. Defaults to 'm'.
+        format: str, optional
+            The format to save the downloaded data. Defaults to 'pickle'.
+        force_download: bool, optional
+            Whether to force download the data even if it was previously downloaded. Defaults to False.
+        
+        Raises
+        ------
+        Exception
+            If there is an error downloading data from EODHD API.
+        
+        Returns
+        -------
+        None
+        """
         new_eodhd_download = {
             "file_name": file_name,
             "format": format,
@@ -82,9 +109,40 @@ class DataExtractor:
 
         else:
             print("No new data downloaded from EODHD")
+            
     
     def download_yahoo_data(self, file_name, tickers, init_date, end_date, period="1mo", interval="1mo", format: str ="pickle", force_download=False):
+        """
+        Downloads data from Yahoo Finance API for the given tickers and saves it to a file.
         
+        Parameters
+        ----------
+        file_name: str
+            The name of the file to save the downloaded data.
+        tickers: list
+            A list of ticker symbols for the stocks to download data for.
+        init_date: str
+            The initial date for the data to download in the format 'YYYY-MM-DD'.
+        end_date: str
+            The end date for the data to download in the format 'YYYY-MM-DD'.
+        period: str, optional
+            The period for the data to download. Defaults to '1mo'.
+        interval: str, optional
+            The interval for the data to download. Defaults to '1mo'.
+        format: str, optional
+            The format to save the downloaded data. Defaults to 'pickle'.
+        force_download: bool, optional
+            Whether to force download the data even if it was previously downloaded. Defaults to False.
+        
+        Raises
+        ------
+        Exception: 
+            If there is an error downloading data from Yahoo Finance API.
+        
+        Returns
+        -------
+        None
+        """
         new_yahoo_download = {
             "file_name": file_name,
             "tickers": tickers,
@@ -96,8 +154,7 @@ class DataExtractor:
         }
         
         if new_yahoo_download != self.last_yahoo_download or force_download:
-        
-            # Diccionario con los reemplazos definidos, donde cada clave termina con '$' para indicar el final de la cadena
+            # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
             extensions_dict = {
                 r"\.LSE$": ".L",      # London Stock Exchange
                 r"\.EPA$": ".PA",     # Euronext Paris
@@ -114,13 +171,13 @@ class DataExtractor:
                 r"\.XETRA$": ".DE",   # XETRA
             }
 
-            # Función para aplicar los reemplazos utilizando el diccionario
+            # Function to apply replacements using the dictionary
             def get_yf_extensions(symbol, extensions_dict):
                 for extension, yf_extension in extensions_dict.items():
                     symbol = re.sub(extension, yf_extension, symbol)
                 return symbol
 
-            # Aplicar los reemplazos a la lista de strings
+            # Apply the replacements to the list of strings
             yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
 
             try:
@@ -154,20 +211,29 @@ class DataExtractor:
     def read_data(self, file_name: str, format: str ="pickle") -> pd.DataFrame:
         """
         Reads data from a file.
-        Args:
-            file_name (str): The name of the file to read.
-            format (str, optional): The format of the file. Defaults to "pickle".
-        Returns:
-            pandas.DataFrame: The loaded data.
-        Raises:
-            FileNotFoundError: If the file does not exist.
-            ValueError: If the format is not supported.
-        """
         
+        Parameters
+        ----------
+        file_name: str
+            The name of the file to read.
+        format: str, optional
+            The format of the file. Defaults to "pickle".
+        
+        Returns
+        -------
+        pandas.DataFrame: 
+            The loaded data.
+        
+        Raises:
+        -------
+        FileNotFoundError
+            If the file does not exist.
+        ValueError
+            If the format is not supported.
+        """
         file_path = os.path.join(self.input_data_path, file_name)
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"The file '{file_name}' was not found in the path '{self.input_data_path}'")
-
         if format == "pickle":
             data = pd.read_pickle(file_path)
         elif format == "excel":
@@ -185,12 +251,16 @@ class DataExtractor:
     def validate_dt_index(data_df: pd.DataFrame) -> pd.DataFrame:
         """
         Validates the index of a DataFrame and converts it to a DatetimeIndex if necessary.
-
-        Parameters:
-        - data_df (pd.DataFrame): The DataFrame to be validated.
-
-        Returns:
-        - pd.DataFrame: The DataFrame with a validated index.
+        
+        Parameters
+        ----------
+        data_df: pd.DataFrame
+            The DataFrame to be validated.
+        
+        Returns
+        -------
+        pd.DataFrame
+            The DataFrame with a validated index.
         """
         if not isinstance(data_df.index, pd.DatetimeIndex):
             logging.warning(
@@ -209,7 +279,21 @@ class DataExtractor:
         return data_df
 
     def validate_tickers(data_df: pd.DataFrame, tickers: list):
-
+        """
+        Validates the tickers in the given DataFrame against a list of tickers.
+        
+        Parameters
+        ----------
+        data_df: pd.DataFrame
+            The DataFrame containing the data.
+        tickers: list
+            The list of tickers to validate.
+            
+        Returns
+        -------
+        pd.DataFrame
+            The original DataFrame with tickers validated.
+        """
         data_df.columns.names = ["type", "symbol"]
         existing_tickers = list(data_df.columns.get_level_values("symbol").unique())
         missing_tickers = set(tickers) - set(existing_tickers)
@@ -223,6 +307,28 @@ class DataExtractor:
         return data_df
 
     def validate_dates(data_df, init_date, end_date):
+        """
+        Validates the given date range against the minimum and maximum available dates in the data DataFrame.
+        
+        Parameters
+        ----------
+        data_df: pandas.DataFrame
+            The DataFrame containing the data.
+        init_date: str
+            The start date to be validated.
+        end_date: str
+            The end date to be validated.
+        
+        Returns
+        -------
+        pandas.DataFrame
+            The original data DataFrame.
+        
+        Warnings
+        --------
+        * If the requested start date is earlier than the minimum available date, a warning message is logged.
+        * If the requested end date is later than the maximum available date, a warning message is logged.
+        """
         if data_df.index.min() > pd.to_datetime(init_date):
             logging.warning(
                 f"The requested start date ({init_date}) is earlier than the minimum available date ({data_df.index.min()})"
