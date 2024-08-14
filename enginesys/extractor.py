@@ -308,36 +308,8 @@ class DataExtractor:
             data_df.index = formated_index
 
         return data_df
-
-    @staticmethod
-    def validate_tickers(prices_df: pd.DataFrame, tickers: list) -> pd.DataFrame:
-        """
-        Validates the tickers in the given DataFrame against a list of tickers.
-        
-        Parameters
-        ----------
-        data_df: pd.DataFrame
-            The DataFrame containing the data.
-        tickers: list
-            The list of tickers to validate.
-            
-        Returns
-        -------
-        pd.DataFrame
-            The original DataFrame with tickers validated.
-        """
-        prices_df.columns.names = ["type", "symbol"]
-        existing_tickers = list(prices_df.columns.get_level_values("symbol").unique())
-        missing_tickers = set(tickers) - set(existing_tickers)
-
-        if len(missing_tickers) > 0:
-            logging.warning(
-                f"Some tickers were not found in the data source:\n"
-                f"\tMissing tickers: {missing_tickers}"
-            )
-
-        return prices_df
-
+    
+    
     @staticmethod
     def validate_dates(data_df, init_date, end_date):
         """
@@ -371,6 +343,36 @@ class DataExtractor:
                 f"The requested end date ({end_date}) is later than the maximum available date ({data_df.index.max()})"
             )
         return data_df
+
+
+    @staticmethod
+    def validate_tickers(prices_df: pd.DataFrame, tickers: list) -> pd.DataFrame:
+        """
+        Validates the tickers in the given DataFrame against a list of tickers.
+        
+        Parameters
+        ----------
+        data_df: pd.DataFrame
+            The DataFrame containing the data.
+        tickers: list
+            The list of tickers to validate.
+            
+        Returns
+        -------
+        pd.DataFrame
+            The original DataFrame with tickers validated.
+        """
+        prices_df.columns.names = ["type", "symbol"]
+        existing_tickers = list(prices_df.columns.get_level_values("symbol").unique())
+        missing_tickers = set(tickers) - set(existing_tickers)
+
+        if len(missing_tickers) > 0:
+            logging.warning(
+                f"Some tickers were not found in the data source:\n"
+                f"\tMissing tickers: {missing_tickers}"
+            )
+
+        return prices_df
     
     
     @staticmethod
