@@ -154,7 +154,7 @@ class DataExtractor:
         logging.info(f"Data downloaded from EODHD API and saved to file '{file_name}'")
 
     
-    def download_yahoo_data(self, file_name, tickers, init_date, end_date, period="1mo", interval="1mo", format: str ="pickle", force_download=False):
+    def download_yf_prices(self, file_name, tickers, start, end, period="1mo", interval="1mo", format: str ="pickle"):
         """
         Downloads data from Yahoo Finance API for the given tickers and saves it to a file.
         
@@ -164,9 +164,9 @@ class DataExtractor:
             The name of the file to save the downloaded data.
         tickers: list
             A list of ticker symbols for the stocks to download data for.
-        init_date: str
+        start: str
             The initial date for the data to download in the format 'YYYY-MM-DD'.
-        end_date: str
+        end: str
             The end date for the data to download in the format 'YYYY-MM-DD'.
         period: str, optional
             The period for the data to download. Defaults to '1mo'.
@@ -186,71 +186,59 @@ class DataExtractor:
         -------
         None
         """
-        new_yahoo_download = {
-            "file_name": file_name,
-            "tickers": tickers,
-            "init_date": init_date,
-            "end_date": end_date,
-            "period": period,
-            "interval": interval,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+        # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
+        extensions_dict = {
+            r"\.LSE$": ".L",      # London Stock Exchange
+            r"\.EPA$": ".PA",     # Euronext Paris
+            r"\.BIT$": ".MI",     # Borsa Italiana (Milan)
+            r"\.BME$": ".MC",     # Bolsa de Madrid
+            r"\.FRA$": ".F",      # Frankfurt Stock Exchange
+            r"\.AMS$": ".AS",     # Euronext Amsterdam
+            r"\.SWX$": ".SW",     # Swiss Exchange
+            r"\.VIE$": ".VI",     # Vienna Stock Exchange
+            r"\.STO$": ".ST",     # Nasdaq Stockholm
+            r"\.HEL$": ".HE",     # Nasdaq Helsinki
+            r"\.CPH$": ".CO",     # Nasdaq Copenhagen
+            r"\.OSL$": ".OL",     # Oslo Stock Exchange
+            r"\.XETRA$": ".DE",   # XETRA
         }
+
+        # Function to apply replacements using the dictionary
+        def get_yf_extensions(symbol, extensions_dict):
+            for extension, yf_extension in extensions_dict.items():
+                symbol = re.sub(extension, yf_extension, symbol)
+            return symbol
+
+        # Apply the replacements to the list of strings
+        yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
+
+        logging.info("Downloading data from Yahoo Finance API ...")
+        try:
+            yf_data = yf.download(
+                yf_tickers,
+                start=start,
+                end=end,
+                period=period,
+                interval=interval,
+                prepost=False,
+                auto_adjust=False,
+            )
+        except Exception as e:
+            logging.error(f"Error downloading data from Yahoo Finance API: {e}")
         
-        if new_yahoo_download != self.last_yahoo_download or force_download:
-            # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
-            extensions_dict = {
-                r"\.LSE$": ".L",      # London Stock Exchange
-                r"\.EPA$": ".PA",     # Euronext Paris
-                r"\.BIT$": ".MI",     # Borsa Italiana (Milan)
-                r"\.BME$": ".MC",     # Bolsa de Madrid
-                r"\.FRA$": ".F",      # Frankfurt Stock Exchange
-                r"\.AMS$": ".AS",     # Euronext Amsterdam
-                r"\.SWX$": ".SW",     # Swiss Exchange
-                r"\.VIE$": ".VI",     # Vienna Stock Exchange
-                r"\.STO$": ".ST",     # Nasdaq Stockholm
-                r"\.HEL$": ".HE",     # Nasdaq Helsinki
-                r"\.CPH$": ".CO",     # Nasdaq Copenhagen
-                r"\.OSL$": ".OL",     # Oslo Stock Exchange
-                r"\.XETRA$": ".DE",   # XETRA
-            }
-
-            # Function to apply replacements using the dictionary
-            def get_yf_extensions(symbol, extensions_dict):
-                for extension, yf_extension in extensions_dict.items():
-                    symbol = re.sub(extension, yf_extension, symbol)
-                return symbol
-
-            # Apply the replacements to the list of strings
-            yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
-
-            try:
-                yf_data = yf.download(
-                    yf_tickers,
-                    start=init_date,
-                    end=end_date,
-                    period=period,
-                    interval=interval,
-                    prepost=False,
-                    auto_adjust=False,
-                )
-            except Exception as e:
-                logging.error(f"Error downloading data from Yahoo Finance API: {e}")
-            
-            file_path = os.path.join(self.input_data_path, file_name)
-            if format == "pickle":
-                yf_data.to_pickle(file_path)
-            elif format == "excel":
-                yf_data.to_excel(file_path)
-            elif format == "csv":
-                yf_data.to_csv(file_path)
-            else:
-                logging.error(f"Unsupported format: '{format}'")
-            logging.info(f"Data downloaded from Yahoo Finance API and saved to file '{file_name}'")
-        
+        file_path = os.path.join(self.input_data_path, file_name)
+        if format == "pickle":
+            yf_data.to_pickle(file_path)
+        elif format == "excel":
+            yf_data.to_excel(file_path)
+        elif format == "csv":
+            yf_data.to_csv(file_path)
         else:
-            logging.info("No new data downloaded from Yahoo Finance")
+            logging.error(f"Unsupported format: '{format}'")
             
-
+        logging.info(f"Data downloaded from Yahoo Finance API and saved to file '{file_name}'")
+        
+        
     def read_data(self, file_name: str, format: str ="pickle") -> pd.DataFrame:
         """
         Reads data from a file.
