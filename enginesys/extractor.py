@@ -4,9 +4,11 @@ import os
 import re
 from datetime import datetime
 from functools import lru_cache
+from typing import Optional, Tuple, Union
+
+import numpy as np
 import pandas as pd
 import yfinance as yf
-from typing import Tuple, Union
 
 import enginesys.eodhd.eodhd as eodhd
 
@@ -21,6 +23,7 @@ class DataExtractor:
         os.makedirs(data_path, exist_ok=True)
         os.makedirs(self.input_data_path, exist_ok=True)
         os.makedirs(self.output_data_path, exist_ok=True)
+    
     
     @staticmethod
     @lru_cache(maxsize=None)
@@ -45,6 +48,7 @@ class DataExtractor:
             logging.error(f"Error downloading data from EODHD API: {e}")
             
         return data
+    
     
     @staticmethod
     @lru_cache(maxsize=None)
@@ -104,8 +108,10 @@ class DataExtractor:
             yf_data = yf.download(**kwargs)
         except Exception as e:
             logging.error(f"Error downloading data from Yahoo Finance API: {e}")
+            yf_data = None
             
         return yf_data
+
 
     def download_eodhd_prices(self, file_name, tickers, start, end, period="m", format: str ="pickle"):
         """
@@ -311,6 +317,7 @@ class DataExtractor:
         logging.info(f"Data loaded from file '{file_name}'")
 
         return data
+
 
     @staticmethod
     def validate_dt_index(data_df: pd.DataFrame) -> pd.DataFrame:
