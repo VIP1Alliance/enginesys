@@ -50,8 +50,8 @@ class DataExtractor:
     @lru_cache(maxsize=None)
     def fetch_yf_prices(
         tickers: Union[str, Tuple[str, ...]], 
-        start: str,
-        end: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
         period: str = "1mo", 
         interval: str = "1mo", 
         date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -87,17 +87,21 @@ class DataExtractor:
         # Apply the replacements to the list of strings
         yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
 
+        kwargs = {
+            "tickers": yf_tickers,
+            "period": period,
+            "interval": interval,
+            "prepost": False,
+            "auto_adjust": False,
+        }
+        if start is not None:
+            kwargs['start'] = start
+        if end is not None:
+            kwargs['end'] = end
+        
         logging.info("Downloading data from Yahoo Finance API ...")
         try:
-            yf_data = yf.download(
-                yf_tickers,
-                start=start,
-                end=end,
-                period=period,
-                interval=interval,
-                prepost=False,
-                auto_adjust=False,
-            )
+            yf_data = yf.download(**kwargs)
         except Exception as e:
             logging.error(f"Error downloading data from Yahoo Finance API: {e}")
             
