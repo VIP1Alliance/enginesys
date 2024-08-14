@@ -108,9 +108,9 @@ class DataExtractor:
             The name of the file to save the downloaded data.
         tickers: list
             A list of ticker symbols for the stocks to download data for.
-        init_date: str
+        start: str
             The initial date for the data to download in the format 'YYYY-MM-DD'.
-        end_date: str
+        end: str
             The end date for the data to download in the format 'YYYY-MM-DD'.
         period: str, optional
             The period for the data to download. Defaults to 'm'.
@@ -128,46 +128,31 @@ class DataExtractor:
         -------
         None
         """
-        new_eodhd_download = {
-            "file_name": file_name,
-            "format": format,
-            "tickers": tickers,
-            "init_date": init_date,
-            "end_date": end_date,
-            "period": period,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-        }
-        
-        if new_eodhd_download != self.last_eodhd_download or force_download:
-            logging.info("Downloading new data from EODHD ...")
-            end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
-            last_day_month = calendar.monthrange(end_date_dt.year, end_date_dt.month)[1]
-            end_date_corrected = end_date_dt.replace(day=last_day_month)
-            end_date_corrected.strftime("%Y-%m-%d")
+        end_dt = datetime.strptime(end, "%Y-%m-%d")
+        last_day_month = calendar.monthrange(end_dt.year, end_dt.month)[1]
+        end_corrected = end_dt.replace(day=last_day_month)
+        end_corrected.strftime("%Y-%m-%d")
 
-            try:
-                data = eodhd.download_multi(
-                    tickers=tickers, start=init_date, end=end_date_corrected, period=period
-                )
-            except Exception as e:
-                logging.error(f"Error downloading data from EODHD API: {e}")
+        logging.info("Downloading data from EODHD ...")
+        try:
+            data = eodhd.download_multi(
+                tickers=tickers, start=start, end=end_corrected, period=period
+            )
+        except Exception as e:
+            logging.error(f"Error downloading data from EODHD API: {e}")
 
-            file_path = os.path.join(self.input_data_path, file_name)
-            if format == "pickle":
-                data.to_pickle(file_path)
-            elif format == "excel":
-                data.to_excel(file_path)
-            elif format == "csv":
-                data.to_csv(file_path)
-            else:
-                logging.error(f"Unsupported format: '{format}'")
-                
-            logging.info(f"Data downloaded from EODHD API and saved to file '{file_name}'")
-            self.last_eodhd_download = new_eodhd_download
-
+        file_path = os.path.join(self.input_data_path, file_name)
+        if format == "pickle":
+            data.to_pickle(file_path)
+        elif format == "excel":
+            data.to_excel(file_path)
+        elif format == "csv":
+            data.to_csv(file_path)
         else:
-            logging.info("No new data downloaded from EODHD")
+            logging.error(f"Unsupported format: '{format}'")
             
+        logging.info(f"Data downloaded from EODHD API and saved to file '{file_name}'")
+
     
     def download_yahoo_data(self, file_name, tickers, init_date, end_date, period="1mo", interval="1mo", format: str ="pickle", force_download=False):
         """
