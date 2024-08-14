@@ -371,3 +371,20 @@ class DataExtractor:
                 f"The requested end date ({end_date}) is later than the maximum available date ({data_df.index.max()})"
             )
         return data_df
+    
+    
+    @staticmethod
+    def validate_date_prices(prices_df: pd.DataFrame, date: str):
+        if prices_df.index[-1] != pd.to_datetime(date):
+            raise ValueError(
+                f"No se encontraron precios de cierre para la fecha {date}"
+            )
+        if prices_df.loc[date].isna().any():
+            last_prices = prices_df.loc[date]
+            null_price_tickers = list(last_prices[last_prices.isna()].index)
+            zero_price_tickers = list(last_prices[last_prices == 0].index)
+            missing_prices_tickers = null_price_tickers + zero_price_tickers
+        else:
+            missing_prices_tickers = []
+            
+        return missing_prices_tickers
