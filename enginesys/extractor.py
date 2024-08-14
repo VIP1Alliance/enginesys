@@ -247,6 +247,31 @@ class DataExtractor:
             
         logging.info(f"Data downloaded from Yahoo Finance API and saved to file '{file_name}'")
         
+    
+    @staticmethod
+    def fill_missing_prices(prices_df1, prices_df2):
+        """
+        Fill missing prices in prices_df1 with corresponding values from prices_df2.
+        Missing prices are identified as zeros and NaNs in prices_df1.
+        
+        Parameters
+        ----------
+        prices_df1: pd.DataFrame
+            The DataFrame containing prices with missing values.
+        prices_df2: pd.DataFrame
+            The DataFrame containing prices to fill the missing values.
+        
+        Returns
+        -------
+        DataFrame: 
+            The DataFrame with missing prices filled using values from prices_df2.
+        """
+        
+        # Fill missing prices in prices_df1 with corresponding values from prices_df2
+        filled_prices_df1 = prices_df1.replace(0, np.nan).fillna(prices_df2)
+
+        return filled_prices_df1
+        
         
     def read_data(self, file_name: str, format: str ="pickle") -> pd.DataFrame:
         """
