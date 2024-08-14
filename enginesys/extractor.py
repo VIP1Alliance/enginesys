@@ -309,7 +309,8 @@ class DataExtractor:
 
         return data_df
 
-    def validate_tickers(data_df: pd.DataFrame, tickers: list):
+    @staticmethod
+    def validate_tickers(prices_df: pd.DataFrame, tickers: list) -> pd.DataFrame:
         """
         Validates the tickers in the given DataFrame against a list of tickers.
         
@@ -325,8 +326,8 @@ class DataExtractor:
         pd.DataFrame
             The original DataFrame with tickers validated.
         """
-        data_df.columns.names = ["type", "symbol"]
-        existing_tickers = list(data_df.columns.get_level_values("symbol").unique())
+        prices_df.columns.names = ["type", "symbol"]
+        existing_tickers = list(prices_df.columns.get_level_values("symbol").unique())
         missing_tickers = set(tickers) - set(existing_tickers)
 
         if len(missing_tickers) > 0:
@@ -335,7 +336,7 @@ class DataExtractor:
                 f"\tMissing tickers: {missing_tickers}"
             )
 
-        return data_df
+        return prices_df
 
     @staticmethod
     def validate_dates(data_df, init_date, end_date):
