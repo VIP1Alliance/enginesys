@@ -3,9 +3,10 @@ import logging
 import os
 import re
 from datetime import datetime
-
+from functools import lru_cache
 import pandas as pd
 import yfinance as yf
+from typing import Tuple, Union
 
 import enginesys.eodhd.eodhd as eodhd
 
@@ -20,27 +21,84 @@ class DataExtractor:
         os.makedirs(data_path, exist_ok=True)
         os.makedirs(self.input_data_path, exist_ok=True)
         os.makedirs(self.output_data_path, exist_ok=True)
-        
-        self.last_eodhd_download = {
-            "file_name": "",
-            "tickers": [],
-            "init_date": "",
-            "end_date": "",
-            "period": "",
-            "date": "",
-        }
-        
-        self.last_yahoo_download = {
-            "file_name": "",
-            "tickers": [],
-            "init_date": "",
-            "end_date": "",
-            "period": "",
-            "interval": "",
-            "date": "",
+    
+    @staticmethod
+    @lru_cache(maxsize=None)
+    def fetch_eodhd_prices(
+        tickers: Union[str, Tuple[str, ...]], 
+        start: str, 
+        end: str, 
+        period: str = "m", 
+        date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
+    ) -> pd.DataFrame:
+        end_dt = datetime.strptime(end, "%Y-%m-%d")
+        last_day_month = calendar.monthrange(end_dt.year, end_dt.month)[1]
+        end_corrected = end_dt.replace(day=last_day_month)
+        end_corrected.strftime("%Y-%m-%d")
+
+        logging.info("Requesting data from EODHD ...")
+        try:
+            data = eodhd.download_multi(
+                tickers=tickers, start=start, end=end_corrected, period=period
+            )
+        except Exception as e:
+            logging.error(f"Error downloading data from EODHD API: {e}")
+            
+        return data
+    
+    @staticmethod
+    @lru_cache(maxsize=None)
+    def fetch_yf_prices(
+        tickers: Union[str, Tuple[str, ...]], 
+        start: str,
+        end: str,
+        period: str = "1mo", 
+        interval: str = "1mo", 
+        date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
+    ) -> pd.DataFrame:
+        # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
+        extensions_dict = {
+            r"\.LSE$": ".L",      # London Stock Exchange
+            r"\.EPA$": ".PA",     # Euronext Paris
+            r"\.BIT$": ".MI",     # Borsa Italiana (Milan)
+            r"\.BME$": ".MC",     # Bolsa de Madrid
+            r"\.FRA$": ".F",      # Frankfurt Stock Exchange
+            r"\.AMS$": ".AS",     # Euronext Amsterdam
+            r"\.SWX$": ".SW",     # Swiss Exchange
+            r"\.VIE$": ".VI",     # Vienna Stock Exchange
+            r"\.STO$": ".ST",     # Nasdaq Stockholm
+            r"\.HEL$": ".HE",     # Nasdaq Helsinki
+            r"\.CPH$": ".CO",     # Nasdaq Copenhagen
+            r"\.OSL$": ".OL",     # Oslo Stock Exchange
+            r"\.XETRA$": ".DE",   # XETRA
         }
 
-    def download_eodhd_data(self, file_name, tickers, init_date, end_date, period="m", format: str ="pickle", force_download=False):
+        # Function to apply replacements using the dictionary
+        def get_yf_extensions(symbol, extensions_dict):
+            for extension, yf_extension in extensions_dict.items():
+                symbol = re.sub(extension, yf_extension, symbol)
+            return symbol
+
+        # Apply the replacements to the list of strings
+        yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
+
+        logging.info("Downloading data from Yahoo Finance API ...")
+        try:
+            yf_data = yf.download(
+                yf_tickers,
+                start=start,
+                end=end,
+                period=period,
+                interval=interval,
+                prepost=False,
+                auto_adjust=False,
+            )
+        except Exception as e:
+            logging.error(f"Error downloading data from Yahoo Finance API: {e}")
+            
+        return yf_data
+
+    def download_eodhd_prices(self, file_name, tickers, start, end, period="m", format: str ="pickle"):
         """
         Downloads data from EODHD API for the given tickers and saves it to a file.
         
