@@ -56,6 +56,11 @@ class DataExtractor:
         interval: str = "1mo", 
         date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
     ) -> pd.DataFrame:
+        
+        if len(tickers ) == 0:
+            logging.error("No tickers provided")
+            return None
+        
         # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
         extensions_dict = {
             r"\.LSE$": ".L",      # London Stock Exchange
