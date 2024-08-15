@@ -65,7 +65,7 @@ A uniform code style makes it easy for others to read your code. Enginesys follo
 
 ## Usage example
 
-### The Filter module
+### The 'FilterThreshold' class
 
 The Filter module, allows you to prepare the (financial) sectors where is recommended open a position:
 
@@ -115,3 +115,4 @@ else:
     logging.warning("No backtesting data to save.")
 ```
 
+The dataFrame 'filter_sectors' now can be pass as parameter for the class Filter to be the attribute 'filter_sectors'.
