@@ -63,9 +63,9 @@ A uniform code style makes it easy for others to read your code. Enginesys follo
 ## To do
 
 
-### Usage example
+## Usage example
 
-## The Filter module
+### The Filter module
 
 The Filter module, allows you to prepare the (financial) sectors where is recommended open a position:
 
