@@ -31,13 +31,16 @@ class DataExtractor:
         tickers: Union[str, Tuple[str, ...]], 
         start: str, 
         end: str, 
-        period: str = "m", 
+        period: str = "m",
+        complete_month: bool = False,
         date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
     ) -> pd.DataFrame:
-        end_dt = datetime.strptime(end, "%Y-%m-%d")
-        last_day_month = calendar.monthrange(end_dt.year, end_dt.month)[1]
-        end_corrected = end_dt.replace(day=last_day_month)
-        end_corrected.strftime("%Y-%m-%d")
+        end_corrected = end
+        if period == "m" and complete_month:
+            end_dt = datetime.strptime(end, "%Y-%m-%d")
+            last_day_month = calendar.monthrange(end_dt.year, end_dt.month)[1]
+            end_corrected = end_dt.replace(day=last_day_month)
+            end_corrected.strftime("%Y-%m-%d")
 
         logging.info("Requesting data from EODHD ...")
         try:
