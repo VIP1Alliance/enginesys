@@ -21,7 +21,7 @@ The current recommended way to install enginesys is from source.
 ```python
 git clone https://github.com/VIP1Alliance/enginesys.git
 cd enginesys
-python3 -m pip install -e .
+python -m pip install -e .
 ```
 
 ### Direct (master)
@@ -31,6 +31,12 @@ Install the package directly from the repository as follows:
 ```python
 pip install git+https://<your_key>@github.com/VIP1Alliance/enginesys.git
 
+```
+
+### Upgrade
+```python
+cd enginesys
+python -m pip install --upgrade -e.
 ```
 
 ## Addition and Maintenance of Code
