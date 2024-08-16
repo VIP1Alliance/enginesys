@@ -40,7 +40,7 @@ class TestFilters(unittest.TestCase):
         self.df = pd.DataFrame(data)
 
     def test_filter_asg_df(self):
-        filters = Filters(self.df.iloc[:-1,:])
+        filters = Filters(self.df.iloc[:-1,:], pd.DataFrame())
         # Replace the actual functions with the mock functions
         filters._get_filter_asg = mock_get_asg_ranking
         global assign_ranking_asg
@@ -54,7 +54,7 @@ class TestFilters(unittest.TestCase):
         pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected1_df.reset_index(drop=True))
 
     def test_filter_asg_warning(self):
-        filters = Filters(self.df)
+        filters = Filters(self.df, pd.DataFrame())
         # Replace the actual functions with the mock functions
         filters._get_filter_asg = mock_get_asg_ranking
         global assign_ranking_asg
@@ -63,7 +63,7 @@ class TestFilters(unittest.TestCase):
             filters.filter_asg()
 
     def test_filter_threshold(self):
-        filters = Filters(self.df.iloc[:-1,:])
+        filters = Filters(self.df.iloc[:-1,:], pd.DataFrame())
         expected_data = {
             'strategy': {2: 'strategy2'},
             'sector': {2: 'sector1'},
