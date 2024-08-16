@@ -69,12 +69,22 @@ def assign_ranking_asg(df: pd.DataFrame, ranking_df: pd.DataFrame,
         raise
 
 class Filters:
-    def __init__(self, recommendations: pd.DataFrame) -> None:
+    def __init__(self, recommendations: pd.DataFrame, filter_sectors: pd.DataFrame) -> None:
         self.recommendations = recommendations
+        self.filter_sectors = filter_sectors
 
-    # Build filter threshold 1.6
-    def build_filter_threshold(self):
-        pass
+    @property
+    def filter_sectors(self):
+        return self._filter_sectors
+    
+    @filter_sectors.setter
+    def filter_sectors(self, filter_sec: pd.DataFrame):
+        self._filter_sectors = filter_sec
+
+
+    # # Build filter threshold 1.6
+    # def build_filter_threshold(self):
+    #     pass
 
     # Build filter ASG (this filter is just read from external source)
     def build_filter_asg(self):
@@ -122,9 +132,6 @@ class Filters:
         filtered = ticker_asg[ticker_asg["selected"] == 1].drop(columns=[selected])
         return filtered
 
-
-
-############################################  IN PROCESS...
 
 class FilterThreshold():
     """
