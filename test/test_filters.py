@@ -3,6 +3,7 @@ import pandas as pd
 from io import StringIO
 
 from enginesys.filters import Filters
+from enginesys.filters import FilterThreshold
 
 # Mock the selected_sectors function
 def mock_selected_sectors() -> pd.DataFrame:
@@ -77,6 +78,36 @@ class TestFilters(unittest.TestCase):
         filters._get_filter_threshold = mock_selected_sectors
         result = filters.filter_threshold()
         pd.testing.assert_frame_equal(result, expected)
+
+class TestFilterThreshold(unittest.TestCase):
+
+    def setUp(self):
+        # Sample data for testing
+        self.data = {
+            'estrategia': ['strategy1', 'strategy1', 'strategy2', 'strategy2'],
+            'sector': ['sector1', 'sector1', 'sector2', 'sector2'],
+            'side': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'state': ['CLOSE', 'CLOSE', 'CLOSE', 'OPEN'],
+            'result_dollars': [100, -50, 300, -200],
+            'symbol': ['SYM1', 'SYM1', 'SYM2', 'SYM2'],
+            'date_open_next_month': ['2023-01-01', '2023-01-01', '2023-02-01', '2023-02-01'],
+            'date_close_next_month':['2023-01-31', '2023-01-31', '2023-02-28', '2023-02-28'],
+            'open_price': [10, 10, 15, 15],
+            'close_price': [12, 8, 18, 12]
+        }
+        self.df = pd.DataFrame(self.data)
+
+    def test_format_data(self):
+        formatted_df = FilterThreshold.format_data(self.df)
+        expected_data = {
+            'estrategia': ['strategy1', 'strategy2'],
+            'sector': ['sector1', 'sector2'],
+            'enter': [1, 1],
+            'buy': [1, 1],
+            'sell': [1, 1]
+        }
+        expected_df = pd.DataFrame(expected_data)
+        pd.testing.assert_frame_equal(formatted_df, expected_df)
 
 if __name__ == '__main__':
     unittest.main()
