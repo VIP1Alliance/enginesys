@@ -201,11 +201,11 @@ class FilterThreshold():
         buy_df = df[df['side'] == 'BUY']
         sell_df = df[df['side'] == 'SELL']
         return buy_df, sell_df
-    
+
     @staticmethod
     def filter_condition(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Filters the DataFrame based on specific criteria.
+        Filters the DataFrame based on specific criteria (1.6 threshold).
 
         Parameters
         ----------
@@ -218,6 +218,8 @@ class FilterThreshold():
             Filtered DataFrame or a message indicating no selection.
         """
         df = df[df["state"] == "CLOSE"]
+        if df.empty:
+            raise ValueError("Empty DataFrame. No 'CLOSE' values.")
         sector = df["sector"].unique()[0]
 
         try:
@@ -253,7 +255,7 @@ class FilterThreshold():
 
     def process_file(self) -> pd.DataFrame:
         """
-        Process the dataFrame and filter the data based on conditions.
+        Orchestrate the steps to process the dataFrame and filter the data based on conditions.
         """
         buy_df, sell_df = self.filter_positions(self.df)
         selected_buy = self.filter_condition(buy_df)
