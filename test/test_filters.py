@@ -5,6 +5,7 @@ from io import StringIO
 from enginesys.filters import Filters
 from enginesys.filters import FilterThreshold
 
+
 # Mock the selected_sectors function
 def mock_selected_sectors() -> pd.DataFrame:
     data = {
