@@ -1,4 +1,5 @@
 import logging
+import stat
 
 import numpy as np
 import pandas as pd
@@ -15,12 +16,8 @@ pd.DataFrame()
 
 class TradeProcessor:
 
-    def __init__(self):
-        pass
-
-    def split_trades_monthly(
-        self, trades_df: pd.DataFrame, open_date_column: str, close_date_column: str
-    ):
+    @staticmethod
+    def split_trades_monthly(trades_df: pd.DataFrame, open_date_column: str, close_date_column: str):
         """
         Splits trades in the given DataFrame into monthly intervals based on the open and close dates.
 
@@ -52,30 +49,9 @@ class TradeProcessor:
         aux_df.insert(0, "date", aux_df.apply(months_by_trade, axis=1))
         splitted_trades_df = aux_df.explode("date", ignore_index=True)
         return splitted_trades_df
-
-    def assing_prices(
-        self, trades_df: pd.DataFrame, prices_df: pd.DataFrame
-    ) -> pd.DataFrame:
-        """
-        Assigns open and close prices to each trade based on the trade date and ticker symbol. 
-        If a price is not found, it is set to None.
-
-        Parameters
-        ----------
-        trades_df : pd.DataFrame
-            DataFrame containing trade information.
-        prices_df : pd.DataFrame
-            DataFrame containing price information.
-        pd.DataFrame
-            DataFrame with trade information and corresponding open and close prices.
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with trade information and corresponding open and close prices.
-        """
-
-        def get_prices(prices_df: pd.DataFrame, tickers: list, dates: list) -> tuple:
+    
+    @staticmethod
+    def get_prices(prices_df: pd.DataFrame, tickers: list, dates: list) -> tuple:
             """
             Extract close and open prices for given tickers and dates. If a price is not found, it is set to None.
 
@@ -113,8 +89,31 @@ class TradeProcessor:
 
             return open_prices, close_prices
 
+    @classmethod
+    def assing_prices(
+        cls, trades_df: pd.DataFrame, prices_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Add columns with open and close prices to each trade based on the trade date and ticker symbol. 
+        If a price is not found, it is set to None.
+
+        Parameters
+        ----------
+        trades_df : pd.DataFrame
+            DataFrame containing trade information.
+        prices_df : pd.DataFrame
+            DataFrame containing price information.
+        pd.DataFrame
+            DataFrame with trade information and corresponding open and close prices.
+
+        Returns
+        -------
+        pd.DataFrame
+            A copy of the Trades DataFrame with the Open and Close price columns added.
+        """
+
         trades_df = trades_df.copy()
-        open_prices, close_prices = get_prices(
+        open_prices, close_prices = cls.get_prices(
             prices_df, tickers=trades_df["ticker"], dates=trades_df["date"]
         )
 
@@ -122,9 +121,10 @@ class TradeProcessor:
 
         return trades_df
 
-    def compute_variations(self, trades_df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def compute_variations(trades_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Calculate the variation rate for each trade based on the open and close prices and the trade side.
+        Add column with the variation rate for each trade based on the open and close prices and the trade side.
 
         Parameters
         ----------
@@ -147,8 +147,8 @@ class TradeProcessor:
 
         return trades_df
 
+    @staticmethod
     def assign_weights(
-        self,
         trades_df: pd.DataFrame,
         strategy_weights: dict,
         total_investment: float,
@@ -185,7 +185,7 @@ class TradeProcessor:
             trades_by_month = strategy_trades_df.groupby("date").size()
 
             # Add global and local weights columns
-            strategy_trades_df["allocation"] = strategy_trades_df["date"].apply(
+            strategy_trades_df["assignation"] = strategy_trades_df["date"].apply(
                 lambda x: strategy_investment / trades_by_month[x]
             )
             strategy_trades_df["weight_by_strategy(%)"] = strategy_trades_df[
@@ -246,15 +246,19 @@ class TradeProcessor:
             DataFrame containing the generated monthly trades dataset.
         """
         monthly_trades_df = self.split_trades_monthly(trades_df, open_date_column, close_date_column)
+        logging.info(f"Monthly trades dataset generated with {len(monthly_trades_df)} trades.")
         monthly_trades_df = monthly_trades_df[(monthly_trades_df["date"] >= init_date) & (monthly_trades_df["date"] <= end_date)]
         monthly_trades_df = self.assing_prices(monthly_trades_df, prices_df)
+        logging.info(f"Prices assigned to the trades dataframe.")
         monthly_trades_df = self.compute_variations(monthly_trades_df)
+        logging.info(f"Variations computed for the trades dataframe.")
         monthly_trades_df = self.assign_weights(monthly_trades_df, strategy_weights, investment)
+        logging.info(f"Weights assigned to the trades dataframe.")
         monthly_trades_df = monthly_trades_df.reset_index(drop=True)
         return monthly_trades_df
 
+    @staticmethod
     def truncate_by_period(
-        self,
         data: pd.DataFrame,
         date_column_name: str = "",
         period_type="year",
@@ -311,3 +315,30 @@ class TradeProcessor:
 
         truncated_data = truncated_data.reset_index(drop=True)
         return truncated_data
+    
+    
+class PricesProcessor:
+    
+    @staticmethod
+    def fill_missing_prices(prices_df1, prices_df2):
+        """
+        Fill missing prices in prices_df1 with corresponding values from prices_df2.
+        Missing prices are identified as zeros and NaNs in prices_df1.
+        
+        Parameters
+        ----------
+        prices_df1: pd.DataFrame
+            The DataFrame containing prices with missing values.
+        prices_df2: pd.DataFrame
+            The DataFrame containing prices to fill the missing values.
+        
+        Returns
+        -------
+        DataFrame: 
+            The DataFrame with missing prices filled using values from prices_df2.
+        """
+        
+        # Fill missing prices in prices_df1 with corresponding values from prices_df2
+        filled_prices_df1 = prices_df1.replace(0, np.nan).fillna(prices_df2)
+
+        return filled_prices_df1
