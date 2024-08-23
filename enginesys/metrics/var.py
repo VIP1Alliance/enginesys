@@ -1,16 +1,24 @@
-from turtle import st
-import pandas as pd
-import numpy as np
 import logging
 
-logging.basicConfig(level=logging.INFO)
+import numpy as np
+import pandas as pd
 
-
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+    
+    
 class ValueAtRisk:
 
     def __init__(self, trades_df: pd.DataFrame, prices_df: pd.DataFrame):
         self.tag_prices_df = self.tag_prices(trades_df, prices_df)
         self.trades_df = trades_df
+        self.price_variations_df = pd.DataFrame()
+        self.strategy_indices_df = pd.DataFrame()
+        self.strategies_variation_df = pd.DataFrame()
+        self.strategies_metrics_df = pd.DataFrame()
+        self.risk_metrics_df = pd.DataFrame()
+        self.log_variation_df = pd.DataFrame()
 
     @staticmethod
     def tag_prices(trades_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
@@ -33,27 +41,19 @@ class ValueAtRisk:
         if not required_cols_trades.issubset(trades_df.columns):
             missing_cols = required_cols_trades - set(trades_df.columns)
             raise ValueError(
-                f"trades_df must contain the following columns: {
-                    ', '.join(required_cols_trades)
-                }. The following are missing: {
-                    ', '.join(missing_cols)
-                }."
+                f"trades_df must contain the following columns: {', '.join(required_cols_trades)}. The following are missing: {', '.join(missing_cols)}."
             )
 
         tickers_df = trades_df[["strategy", "side", "ticker"]].sort_values(
             by=["strategy", "side", "ticker"]
         )
-        multi_index_prices = pd.MultiIndex.from_frame(
-            tickers_df, names=["strategy", "side", "ticker"]
-        )
+        multi_index_prices = pd.MultiIndex.from_frame(tickers_df, names=["strategy", "side", "ticker"])
 
         try:
             tag_prices_df = prices_df[multi_index_prices.get_level_values(2)]
         except KeyError as e:
-            raise KeyError(
-                f"Prices DataFrame does not contain the required tickers: {e}"
-            )
-
+            raise KeyError(f"Prices DataFrame does not contain the required tickers: {e}")
+        logging.info("Prices DataFrame tagged successfully")
         tag_prices_df.columns = multi_index_prices
         return tag_prices_df.sort_index(axis=1)
 
@@ -102,9 +102,7 @@ class ValueAtRisk:
         side_columns = prices_df.columns.get_level_values("side")
 
         if not {"BUY", "SELL"}.issubset(side_columns):
-            raise ValueError(
-                "prices_df must contain 'BUY' or 'SELL' sides in the columns"
-            )
+            raise ValueError("prices_df must contain 'BUY' or 'SELL' sides in the columns")
 
         buy_prices_df = prices_df.loc[:, side_columns == "BUY"]
         sell_prices_df = prices_df.loc[:, side_columns == "SELL"]
@@ -132,12 +130,15 @@ class ValueAtRisk:
         pd.DataFrame
             DataFrame with individual metrics including Variance, EWMA, and VaR.
         """
+        if not isinstance(variations_df, pd.DataFrame):
+            raise ValueError("variations_df must be a DataFrame")
+        
         if variations_df.empty:
             raise ValueError("variations_df is empty")
         
-        if not all(list(variations_df.dtypes=="float64")):
+        if not all(variations_df.dtypes=="float64"):
             raise ValueError("variations_df must contain only numerical values")
-
+        
         # Lambda value
         lambda_ = 0.98
 
@@ -148,9 +149,7 @@ class ValueAtRisk:
             raise ValueError("Error applying logarithm to variations_df: " + str(e))
 
         # Weighting factor
-        weighting_factor = [
-            lambda_ ** (i) for i in range(len(log_variations_df) - 1, -1, -1)
-        ]
+        weighting_factor = [lambda_ ** (i) for i in range(len(log_variations_df) - 1, -1, -1)]
 
         if len(weighting_factor) != len(log_variations_df):
             raise ValueError(
@@ -200,9 +199,7 @@ class ValueAtRisk:
 
         for strategy in strategies:
             if strategy not in individual_metrics_df.index:
-                raise ValueError(
-                    f"Strategy '{strategy}' not found in individual metrics"
-                )
+                raise ValueError(f"Strategy '{strategy}' not found in individual metrics")
 
             strategy_metrics_df = individual_metrics_df.loc[strategy]
             n_tickers = len(strategy_metrics_df)
@@ -221,21 +218,15 @@ class ValueAtRisk:
                 strategy_metrics_df.index
             )
             if missing_tickers:
-                raise ValueError(
-                    f"Missing tickers in individual metrics: {missing_tickers}"
-                )
+                raise ValueError(f"Missing tickers in individual metrics: {missing_tickers}")
 
             for ticker in list(var_cov_matrix.columns):
-                var_cov_matrix.at[ticker, ticker] = strategy_metrics_df.loc[
-                    ticker, "Variance"
-                ]
+                var_cov_matrix.at[ticker, ticker] = strategy_metrics_df.loc[ticker, "Variance"]
 
             # Strategy Variance
             strategy_variance = weights.dot(var_cov_matrix).dot(weights)
             if strategy_variance < 0:
-                logging.warning(
-                    f"Negative portfolio variance for 'strategy {strategy}'"
-                )
+                logging.warning(f"Negative portfolio variance for 'strategy {strategy}'")
                 strategies_var[strategy] = np.nan
             else:
                 # Strategy VaR
@@ -266,10 +257,7 @@ class ValueAtRisk:
         indices_df = pd.DataFrame()
 
         for strategy in strategies:
-            if (
-                strategy
-                not in variations_df.columns.get_level_values("strategy").unique()
-            ):
+            if strategy not in variations_df.columns.get_level_values("strategy").unique():
                 raise ValueError(f"Strategy '{strategy}' not found in variations_df")
 
             strategy_variations_df = variations_df[strategy].copy()
@@ -328,9 +316,7 @@ class ValueAtRisk:
                     f"Strategy '{strategy}' not found in var_cov_algo_matrix"
                 )
 
-            var_cov_algo_matrix.at[strategy, strategy] = strategy_metrics_df.loc[
-                strategy, "Variance"
-            ]
+            var_cov_algo_matrix.at[strategy, strategy] = strategy_metrics_df.loc[strategy, "Variance"]
 
         return var_cov_algo_matrix
 
@@ -364,9 +350,7 @@ class ValueAtRisk:
                 "Mismatch between number of strategies and dimensions of var_cov_algo_matrix"
             )
 
-        algorithm_variance = strategy_weights.dot(var_cov_algo_matrix).dot(
-            strategy_weights
-        )
+        algorithm_variance = strategy_weights.dot(var_cov_algo_matrix).dot(strategy_weights)
         if algorithm_variance < 0:
             logging.warning(f"Negative Variance obtained for 'Gea Algorithm'")
             algorithm_var = np.nan
@@ -395,29 +379,6 @@ class ValueAtRisk:
         algorithm_var = cls.var_from_matrix(var_cov_algo_matrix)
         return algorithm_var
 
-    @classmethod
-    def get_algorithm_ewma(cls, geom_index_alg: pd.Series) -> float:
-        """
-        Calculate the Exponentially Weighted Moving Average (EWMA) for the algorithm based on strategy indices.
-
-        Parameters
-        ----------
-        strategy_indices_df: pd.DataFrame
-            DataFrame with index values for strategies.
-
-        Returns
-        -------
-        float
-            Exponentially Weighted Moving Average (EWMA) for the algorithm.
-        """
-        gia_variation = cls.side_variations(geom_index_alg)
-        individual_var_strategy = cls.get_individual_metrics(gia_variation)
-
-        if "EWMA" not in individual_var_strategy.columns:
-            raise KeyError("EWMA column is missing from individual metrics")
-
-        return individual_var_strategy.loc[0, "EWMA"]
-
     @staticmethod
     def get_geom_index_alg(strategy_indices_df: pd.DataFrame) -> pd.Series:
         """
@@ -440,7 +401,31 @@ class ValueAtRisk:
             strategy_indices_df.mul(strategy_weights).sum(axis=1) / base_value
         )
         geometric_index_algorithm.rename("geom_index_alg", inplace=True)
-        return geometric_index_algorithm[1:]
+        geometric_index_algorithm = pd.DataFrame(geometric_index_algorithm[1:])
+        return geometric_index_algorithm
+    
+    @classmethod
+    def get_algorithm_ewma(cls, geom_index_alg: pd.DataFrame) -> float:
+        """
+        Calculate the Exponentially Weighted Moving Average (EWMA) for the algorithm based on strategy indices.
+
+        Parameters
+        ----------
+        geom_index_alg: pd.DataFrame
+            DataFrame with index values for strategies.
+
+        Returns
+        -------
+        float
+            Exponentially Weighted Moving Average (EWMA) for the algorithm.
+        """
+        gia_variation = cls.side_variations(geom_index_alg)
+        individual_var_strategy = cls.get_individual_metrics(gia_variation)
+
+        if "EWMA" not in individual_var_strategy.columns:
+            raise KeyError("EWMA column is missing from individual metrics")
+        
+        return individual_var_strategy.loc["geom_index_alg", "EWMA"]
 
     @classmethod
     def get_log_variations(cls, strategy_indices_df: pd.DataFrame) -> pd.DataFrame:
@@ -457,10 +442,8 @@ class ValueAtRisk:
         pd.DataFrame
             DataFrame with log variations for each strategy and the algorithm.
         """
-        log_variation_df = np.log(strategy_indices_df / strategy_indices_df.shift(1))[
-            1:
-        ]
-        return log_variation_df
+        log_variation_df = np.log(strategy_indices_df / strategy_indices_df.shift(1))
+        return log_variation_df[1:]
 
     def calculate_risk_metrics(self) -> pd.DataFrame:
         """
@@ -476,36 +459,86 @@ class ValueAtRisk:
         pd.DataFrame
             DataFrame with VaR and EWMA values for each strategy and the algorithm.
         """
-
-        self.price_variations_df = self.calculate_variations(self.tag_prices_df)
-        self.strategy_indices_df = self.get_strategy_indices(self.price_variations_df)
-
-        self.strategies_variation_df = self.side_variations(self.strategy_indices_df)
-        self.strategies_metrics_df = self.get_individual_metrics(
-            self.strategies_variation_df
-        )
-
-        # Calculate the VaR and EWMA for each strategy
-        strategies_var = self.get_strategies_var(self.price_variations_df)
-        strategies_ewma = self.strategies_metrics_df["EWMA"]
-
-        self.risk_metrics_df = pd.DataFrame(columns=["VaR", "EWMA"])
-        for strategy in self.strategy_indices_df.columns:
-            if strategy in strategies_var and strategy in strategies_ewma:
-                strategy_var = -strategies_var[strategy]
-                strategy_ewman = strategies_ewma[strategy]
-                self.risk_metrics_df.loc[strategy] = (strategy_var, strategy_ewman)
-            else:
-                raise ValueError(f"Missing VaR or EWMA for strategy '{strategy}'")
-
-        self.geom_index_alg = self.get_geom_index_alg(self.strategy_indices_df)
-        self.strategy_indices_df["Algoritmo GEA"] = self.geom_index_alg
-
-        # Calculate the VaR and EWMA for the algorithm
-        self.risk_metrics_df.loc["Algoritmo GEA"] = (
-            -self.get_algorithm_var(self.strategy_indices_df),
-            self.get_algorithm_ewma(self.geom_index_alg),
-        )
-
-        self.log_variation_df = self.get_log_variations(self.strategy_indices_df)
+        try:
+            #Calculate the variations for each asset depending on the side (BUY/SELL)
+            self.price_variations_df = self.calculate_variations(self.tag_prices_df)
+            logging.info("Price variations calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating price variations: " + str(e))
         
+        try:
+            # Calculate the index values for each strategy based on assets variations
+            self.strategy_indices_df = self.get_strategy_indices(self.price_variations_df)
+            logging.info("Strategy indices calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating strategy indices: " + str(e))
+
+        try:
+            # Calculate the variations for each strategy index
+            self.strategies_variation_df = self.side_variations(self.strategy_indices_df)
+            logging.info("Strategy variations calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating strategy variations: " + str(e))
+        
+        try:
+            # Calculate the individual metrics for each strategy
+            self.strategies_metrics_df = self.get_individual_metrics(
+                self.strategies_variation_df
+            )
+            logging.info("Individual metrics calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating individual metrics: " + str(e))
+
+        try:
+            # Calculate value at risk (VaR) for each strategy
+            strategies_var = self.get_strategies_var(self.price_variations_df)
+        except ValueError as e:
+            logging.error("Error calculating strategies VaR: " + str(e))
+        
+        try:
+            # Get the EWMA values for each strategy
+            strategies_ewma = self.strategies_metrics_df["EWMA"]
+
+            # Create a DataFrame with the VaR and EWMA for each strategy
+            self.risk_metrics_df = pd.DataFrame(columns=["VaR", "EWMA"])
+            for strategy in self.strategy_indices_df.columns:
+                if strategy in strategies_var and strategy in strategies_ewma:
+                    strategy_var = -strategies_var[strategy]
+                    strategy_ewman = strategies_ewma[strategy]
+                    self.risk_metrics_df.loc[strategy] = (strategy_var, strategy_ewman)
+                else:
+                    raise ValueError(f"Missing VaR or EWMA for strategy '{strategy}'")
+            logging.info("Risk metrics calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating risk metrics: " + str(e))
+
+        try:
+            # Calculate the geometric index for the algorithm based on strategy indices
+            geom_index_alg = self.get_geom_index_alg(self.strategy_indices_df)
+            logging.info("Geometric index for the algorithm calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating geometric index for the algorithm: " + str(e))
+        
+        try:
+            # Add the geometric index for the algorithm to the strategy indices DataFrame
+            self.strategy_indices_df["Algoritmo GEA"] = geom_index_alg
+            logging.info("Geometric index for the algorithm added to the strategy indices DataFrame")
+        except ValueError as e:
+            logging.error("Error adding the geometric index for the algorithm to the strategy indices DataFrame: " + str(e))
+
+        try:
+            # Calculate the VaR and EWMA for the algorithm
+            self.risk_metrics_df.loc["Algoritmo GEA"] = (
+                -self.get_algorithm_var(self.strategy_indices_df),
+                self.get_algorithm_ewma(geom_index_alg),
+            )
+            logging.info("VaR and EWMA for the algorithm calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating VaR and EWMA for the algorithm: " + str(e))
+
+        try:
+            # Calculate the log variations for each strategy and the algorithm
+            self.log_variation_df = self.get_log_variations(self.strategy_indices_df)
+            logging.info("Log variations calculated successfully")
+        except ValueError as e:
+            logging.error("Error calculating log variations: " + str(e))
