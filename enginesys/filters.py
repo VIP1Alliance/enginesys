@@ -2,6 +2,7 @@
 import os
 import logging
 import warnings
+from typing import Tuple, List, Optional
 
 import pandas as pd
 import numpy as np
@@ -68,16 +69,26 @@ def assign_ranking_asg(df: pd.DataFrame, ranking_df: pd.DataFrame,
         raise
 
 class Filters:
-    def __init__(self, recommendations: pd.DataFrame) -> None:
+    def __init__(self, recommendations: pd.DataFrame, filter_sectors: pd.DataFrame) -> None:
         self.recommendations = recommendations
+        self.filter_sectors = filter_sectors
 
-    # Build filter threshold 1.6
-    def build_filter_threshold(self):
-        pass
+    @property
+    def filter_sectors(self):
+        return self._filter_sectors
+    
+    @filter_sectors.setter
+    def filter_sectors(self, filter_sec: pd.DataFrame):
+        self._filter_sectors = filter_sec
 
-    # Build filter ASG
+
+    # # Build filter threshold 1.6
+    # def build_filter_threshold(self):
+    #     pass
+
+    # Build filter ASG (this filter is just read from external source)
     def build_filter_asg(self):
-        pass
+        raise ("Not implemented.")
 
     # Load filter threshold 1.6
     @staticmethod
@@ -120,3 +131,143 @@ class Filters:
             ticker_asg[selected] = 0
         filtered = ticker_asg[ticker_asg["selected"] == 1].drop(columns=[selected])
         return filtered
+
+
+class FilterThreshold():
+    """
+    1.6 filter over ETFs sectors.
+    """
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
+        pass
+
+    def __repr__(self) -> str:
+        return f"<DataFrame with columns {list(self.df.columns)}>"
+
+    @staticmethod
+    def format_data(df: pd.DataFrame, strategy_col: str = "estrategia", sector_col: str = "sector", 
+                side_col: str = "side", enter_value: int = 1) -> pd.DataFrame:
+        """
+        Formats the input DataFrame by grouping by 'strategy', 'sector', and 'side', 
+        and performing one-hot encoding on the 'side' column.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The input DataFrame containing strategy, sector, and side columns.
+        strategy_col : str
+            The name of the strategy column in the DataFrame.
+        sector_col : str
+            The name of the sector column in the DataFrame.
+        side_col : str
+            The name of the side column in the DataFrame.
+        enter_value : int
+            The value to assign to the 'enter' column.
+
+        Returns
+        -------
+        pd.DataFrame
+            The formatted DataFrame with columns 'strategy', 'sector', 'enter', 'buy', and 'sell'.
+        """
+        # Validate that the necessary columns exist
+        required_columns = {strategy_col, sector_col, side_col}
+        if not required_columns.issubset(df.columns):
+            missing_cols = required_columns - set(df.columns)
+            raise ValueError(f"Missing required columns: {missing_cols}")
+
+        # Group by 'estrategia', 'sector', and 'side', then count occurrences
+        filter_sectors = df.groupby([strategy_col, sector_col, side_col]).size().reset_index(name="count")
+
+        # One-hot encode the 'side' column
+        o_h_e = pd.get_dummies(filter_sectors[side_col])
+
+        # Sum 'BUY' and 'SELL' within each 'estrategia' and 'sector'
+        filter_sec = pd.concat([filter_sectors.drop(columns=[side_col, "count"]), o_h_e], axis=1)
+        filter_sec = filter_sec.groupby([strategy_col, sector_col])[["BUY", "SELL"]].sum().reset_index()
+
+        # Add 'enter' column with value 1
+        filter_sec["enter"] = enter_value
+
+        # change label columns
+        filter_sec = filter_sec.rename(columns={"BUY": "buy", "SELL": "sell"})
+
+        return filter_sec[[strategy_col, sector_col, "enter", "buy", "sell"]]
+
+    @staticmethod
+    def filter_positions(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Separate the DataFrame into buy and sell positions.
+        """
+        buy_df = df[df['side'] == 'BUY']
+        sell_df = df[df['side'] == 'SELL']
+        return buy_df, sell_df
+
+    @staticmethod
+    def filter_condition(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filters the DataFrame based on specific criteria (1.6 threshold).
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame containing the data to be filtered.
+
+        Returns
+        -------
+        pd.DataFrame or str
+            Filtered DataFrame or a message indicating no selection.
+        """
+        df = df[df["state"] == "CLOSE"]
+        if df.empty:
+            raise ValueError("Empty DataFrame. No 'CLOSE' values.")
+        sector = df["sector"].unique()[0]
+
+        try:
+            max_ = df.loc[df["state"] == "CLOSE", "result_dollars"].max()
+            min_ = df.loc[df["state"] == "CLOSE", "result_dollars"].min()
+
+            if pd.isna(max_) or pd.isna(min_):
+                logging.warning("No CLOSE states found in the DataFrame.")
+                return "No CLOSE states found in the DataFrame."
+
+            abs_max_min_ = [abs(max_ / min_) for i in range(df.shape[0])]
+
+            df = df.assign(abs_max_min=abs_max_min_)
+            df["aux_filter"] = np.where(df["abs_max_min"] >= 1.6, 1, 0)
+            selected_df = df[df["aux_filter"] == 1].rename(columns={"abs_max_min": "criterio de selección"})
+
+            if selected_df.empty:
+                logging.warning(f"No rows selected based on the criteria. Sector {sector}")
+                return pd.DataFrame()
+
+            selected_df = selected_df.drop(["aux_filter"], axis=1)
+            columns = [
+                "estrategia", "sector", "symbol", "side", "date_open_next_month", "date_close_next_month",
+                "open_price", "close_price", "result_dollars", "state", "criterio de selección"
+            ]
+            selected_df = selected_df[columns]
+
+            return selected_df
+        
+        except Exception as e:
+            logging.error(f"An error occurred during filtering: {e}")
+            return f"An error occurred: {e}"
+
+    def process_file(self) -> pd.DataFrame:
+        """
+        Orchestrate the steps to process the dataFrame and filter the data based on conditions.
+        """
+        buy_df, sell_df = self.filter_positions(self.df)
+        selected_buy = self.filter_condition(buy_df)
+        selected_sell = self.filter_condition(sell_df)
+        
+        selected = []
+        if isinstance(selected_buy, pd.DataFrame):
+            selected.append(selected_buy)
+        if isinstance(selected_sell, pd.DataFrame):
+            selected.append(selected_sell)
+        
+        if selected:
+            return pd.concat(selected, axis=0)
+        else:
+            return pd.DataFrame()

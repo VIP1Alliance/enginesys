@@ -3,6 +3,7 @@ import pandas as pd
 from io import StringIO
 
 from enginesys.filters import Filters
+from enginesys.filters import FilterThreshold
 
 # Mock the selected_sectors function
 def mock_selected_sectors() -> pd.DataFrame:
@@ -40,7 +41,7 @@ class TestFilters(unittest.TestCase):
         self.df = pd.DataFrame(data)
 
     def test_filter_asg_df(self):
-        filters = Filters(self.df.iloc[:-1,:])
+        filters = Filters(self.df.iloc[:-1,:], pd.DataFrame())
         # Replace the actual functions with the mock functions
         filters._get_filter_asg = mock_get_asg_ranking
         global assign_ranking_asg
@@ -54,7 +55,7 @@ class TestFilters(unittest.TestCase):
         pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected1_df.reset_index(drop=True))
 
     def test_filter_asg_warning(self):
-        filters = Filters(self.df)
+        filters = Filters(self.df, pd.DataFrame())
         # Replace the actual functions with the mock functions
         filters._get_filter_asg = mock_get_asg_ranking
         global assign_ranking_asg
@@ -63,7 +64,7 @@ class TestFilters(unittest.TestCase):
             filters.filter_asg()
 
     def test_filter_threshold(self):
-        filters = Filters(self.df.iloc[:-1,:])
+        filters = Filters(self.df.iloc[:-1,:], pd.DataFrame())
         expected_data = {
             'strategy': {2: 'strategy2'},
             'sector': {2: 'sector1'},
@@ -77,6 +78,67 @@ class TestFilters(unittest.TestCase):
         filters._get_filter_threshold = mock_selected_sectors
         result = filters.filter_threshold()
         pd.testing.assert_frame_equal(result, expected)
+
+class TestFilterThreshold(unittest.TestCase):
+
+    def setUp(self):
+        # Sample data for testing
+        self.data = {
+            'estrategia': ['strategy1', 'strategy1', 'strategy2', 'strategy2'],
+            'sector': ['sector1', 'sector1', 'sector2', 'sector2'],
+            'side': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'state': ['CLOSE', 'CLOSE', 'CLOSE', 'OPEN'],
+            'result_dollars': [100, -50, 300, -200],
+            'symbol': ['SYM1', 'SYM1', 'SYM2', 'SYM2'],
+            'date_open_next_month': ['2023-01-01', '2023-01-01', '2023-02-01', '2023-02-01'],
+            'date_close_next_month':['2023-01-31', '2023-01-31', '2023-02-28', '2023-02-28'],
+            'open_price': [10, 10, 15, 15],
+            'close_price': [12, 8, 18, 12]
+        }
+        self.df = pd.DataFrame(self.data)
+
+    def test_format_data(self):
+        formatted_df = FilterThreshold.format_data(self.df)
+        expected_data = {
+            'estrategia': ['strategy1', 'strategy2'],
+            'sector': ['sector1', 'sector2'],
+            'enter': [1, 1],
+            'buy': [1, 1],
+            'sell': [1, 1]
+        }
+        expected_df = pd.DataFrame(expected_data)
+        pd.testing.assert_frame_equal(formatted_df, expected_df)
+
+    def test_format_data_missing_columns(self):
+        df_missing_cols = self.df.drop(columns=["sector"])
+        with self.assertRaises(ValueError) as context:
+            FilterThreshold.format_data(df_missing_cols)
+        self.assertTrue('Missing required columns' in str(context.exception))
+
+    def test_filter_position(self):
+        buy_df, sell_df = FilterThreshold.filter_positions(self.df)
+        self.assertEqual(buy_df.shape[0], 2)
+        self.assertEqual(sell_df.shape[0], 2)
+        self.assertTrue((buy_df['side'] == 'BUY').all())
+        self.assertTrue((sell_df['side'] == 'SELL').all())
+
+    def test_filter_conditions(self):
+        filtered_df = FilterThreshold.filter_condition(self.df)
+        self.assertEqual(filtered_df.shape[0], 3)
+        self.assertEqual(filtered_df.iloc[0]['symbol'], 'SYM1')
+        self.assertEqual(filtered_df.iloc[0]['criterio de selección'], 6.0)
+
+    def test_filter_condition_no_close(self):
+        df_no_close = self.df[self.df["state"] != 'CLOSE']
+        with self.assertRaises(ValueError) as context:
+            FilterThreshold.filter_condition(df_no_close)
+        self.assertTrue('Empty DataFrame' in str(context.exception))
+
+    def test_process_file(self):
+        filter_threshold = FilterThreshold(self.df)
+        result_df = filter_threshold.process_file()
+        self.assertEqual(result_df.shape[0], 2)
+        self.assertEqual(result_df.iloc[0]['symbol'], 'SYM1')
 
 if __name__ == '__main__':
     unittest.main()
