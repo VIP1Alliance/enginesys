@@ -1,3 +1,4 @@
+import dis
 import logging
 
 import numpy as np
@@ -112,7 +113,7 @@ class ValueAtRisk:
 
         variation_df = pd.concat([variations_buy, variations_sell], axis=1)
         variation_df = variation_df.sort_index(axis=1)
-
+        
         return variation_df
 
     @staticmethod
@@ -397,12 +398,12 @@ class ValueAtRisk:
         n_strategies = len(list(strategy_indices_df.columns))
         strategy_weights = np.array([1 / n_strategies] * n_strategies)
         base_value = (strategy_indices_df.iloc[0] * strategy_weights).sum()
-        geometric_index_algorithm = 100 * (
+        geom_index_alg = 100 * (
             strategy_indices_df.mul(strategy_weights).sum(axis=1) / base_value
         )
-        geometric_index_algorithm.rename("geom_index_alg", inplace=True)
-        geometric_index_algorithm = pd.DataFrame(geometric_index_algorithm[1:])
-        return geometric_index_algorithm
+        geom_index_alg.rename("geom_index_alg", inplace=True)
+        geom_index_alg = pd.DataFrame(geom_index_alg[1:])
+        return geom_index_alg
     
     @classmethod
     def get_algorithm_ewma(cls, geom_index_alg: pd.DataFrame) -> float:
