@@ -1,4 +1,8 @@
-
 *.pyc
-.vscode/settings.json
+.vscode/
 /enginesys.egg-info
+eng_env/
+__pycache__/
+*.egg-info/
+*.xlsx
+build/
