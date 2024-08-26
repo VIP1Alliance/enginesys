@@ -13,7 +13,7 @@ import yfinance as yf
 import enginesys.eodhd.eodhd as eodhd
 
 
-class DataExtractor:
+class APIConnector:
 
     def __init__(self, data_path):
         self.data_path = data_path
