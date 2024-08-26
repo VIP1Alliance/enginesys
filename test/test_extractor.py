@@ -3,14 +3,14 @@ import unittest
 import pandas as pd
 import pandas.testing as pdt
 
-from enginesys.extractor import DataExtractor
+from enginesys.api_conector import APIConnector
             
     
 class TestDataExtractor(unittest.TestCase):
 
     def setUp(self):
         self.data_path = "/path/to/data"
-        self.extractor = DataExtractor(self.data_path)
+        self.extractor = APIConnector(self.data_path)
         self.data_df = pd.DataFrame({"Value": [1, 2, 3]}, index=pd.to_datetime(["2022-01-01", "2022-01-02", "2022-01-03"]))
         self.prices_df = pd.DataFrame({
             "AAPL": [100.0, 105.0, 110.0],
