@@ -90,7 +90,7 @@ class FileManager:
                 os.makedirs(os.path.join(self.output_data_path, folder_name), exist_ok=True)
                 file_name = os.path.join(folder_name, file_name)
             file_path = os.path.join(self.output_data_path, file_name)
-            df.to_excel(file_path, index=False)
+            df.to_excel(file_path)
             logging.info(f"Data exported successfully to {file_path}")
         except Exception as e:
             raise ValueError(f"An error occurred while exporting data: {str(e)}")
