@@ -521,13 +521,6 @@ class ValueAtRisk:
             logging.error("Error calculating geometric index for the algorithm: " + str(e))
         
         try:
-            # Add the geometric index for the algorithm to the strategy indices DataFrame
-            self.strategy_indices_df["Algoritmo GEA"] = geom_index_alg
-            logging.info("Geometric index for the algorithm added to the strategy indices DataFrame")
-        except ValueError as e:
-            logging.error("Error adding the geometric index for the algorithm to the strategy indices DataFrame: " + str(e))
-
-        try:
             # Calculate the VaR and EWMA for the algorithm
             self.risk_metrics_df.loc["Algoritmo GEA"] = (
                 -self.get_algorithm_var(self.strategy_indices_df),
@@ -536,6 +529,13 @@ class ValueAtRisk:
             logging.info("VaR and EWMA for the algorithm calculated successfully")
         except ValueError as e:
             logging.error("Error calculating VaR and EWMA for the algorithm: " + str(e))
+            
+        try:
+            # Add the geometric index for the algorithm to the strategy indices DataFrame
+            self.strategy_indices_df["Algoritmo GEA"] = geom_index_alg
+            logging.info("Geometric index for the algorithm added to the strategy indices DataFrame")
+        except ValueError as e:
+            logging.error("Error adding the geometric index for the algorithm to the strategy indices DataFrame: " + str(e))
 
         try:
             # Calculate the log variations for each strategy and the algorithm
