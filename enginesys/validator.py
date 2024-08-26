@@ -7,7 +7,7 @@ logging.basicConfig(
 )
 
 
-class DataFrameFormatter:
+class DataFormatter:
     
     def __init__(self, required_columns=None):
         """
@@ -32,7 +32,7 @@ class DataFrameFormatter:
     
     
     @staticmethod
-    def remove_unnamed_columns(df: pd.DataFrame) -> pd.DataFrame:
+    def remove_unnamed_cols(df: pd.DataFrame) -> pd.DataFrame:
         """
         Remove columns from the dataframe that contain the word 'Unnamed' in their names.
 
