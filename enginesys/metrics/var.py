@@ -1,18 +1,21 @@
-import dis
 import logging
 
 import numpy as np
 import pandas as pd
+from scipy.linalg import eigh
+from ..processor import PricesProcessor
+
+
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s -asdfasdf %(levelname)s - %(message)s"
 )
     
     
 class ValueAtRisk:
 
     def __init__(self, trades_df: pd.DataFrame, prices_df: pd.DataFrame):
-        self.tag_prices_df = self.tag_prices(trades_df, prices_df)
+        self.tag_prices_df = PricesProcessor.tag_prices(trades_df, prices_df)
         self.trades_df = trades_df
         self.price_variations_df = pd.DataFrame()
         self.strategy_indices_df = pd.DataFrame()
@@ -20,43 +23,6 @@ class ValueAtRisk:
         self.strategies_metrics_df = pd.DataFrame()
         self.risk_metrics_df = pd.DataFrame()
         self.log_variation_df = pd.DataFrame()
-
-    @staticmethod
-    def tag_prices(trades_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Tag prices DataFrame based on trades information.
-
-        Parameters
-        ----------
-        trades_df: pd.DataFrame
-            DataFrame containing trades information with columns 'strategy', 'side', and 'ticker'.
-        prices_df: pd.DataFrame
-            DataFrame containing prices data with multi-index columns corresponding to tickers.
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with tagged prices, indexed by strategy, side, and ticker.
-        """
-        required_cols_trades = {"strategy", "side", "ticker"}
-        if not required_cols_trades.issubset(trades_df.columns):
-            missing_cols = required_cols_trades - set(trades_df.columns)
-            raise ValueError(
-                f"trades_df must contain the following columns: {', '.join(required_cols_trades)}. The following are missing: {', '.join(missing_cols)}."
-            )
-
-        tickers_df = trades_df[["strategy", "side", "ticker"]].sort_values(
-            by=["strategy", "side", "ticker"]
-        )
-        multi_index_prices = pd.MultiIndex.from_frame(tickers_df, names=["strategy", "side", "ticker"])
-
-        try:
-            tag_prices_df = prices_df[multi_index_prices.get_level_values(2)]
-        except KeyError as e:
-            raise KeyError(f"Prices DataFrame does not contain the required tickers: {e}")
-        logging.info("Prices DataFrame tagged successfully")
-        tag_prices_df.columns = multi_index_prices
-        return tag_prices_df.sort_index(axis=1)
 
     @staticmethod
     def side_variations(prices_df: pd.DataFrame, side: str = "BUY") -> pd.DataFrame:
@@ -227,12 +193,14 @@ class ValueAtRisk:
             # Strategy Variance
             strategy_variance = weights.dot(var_cov_matrix).dot(weights)
             if strategy_variance < 0:
-                logging.warning(f"Negative portfolio variance for 'strategy {strategy}'")
-                strategies_var[strategy] = np.nan
-            else:
-                # Strategy VaR
-                strategy_var = np.sqrt(strategy_variance)
-                strategies_var[strategy] = strategy_var
+                logging.warning(
+                    f"Negative portfolio variance for 'strategy {strategy}', converting covariance matrix to positive semidefinite ..."
+                )
+                adjusted_var_cov_matrix = cls.make_positive_semidefinite(var_cov_matrix)
+                strategy_variance = weights.dot(adjusted_var_cov_matrix).dot(weights)
+            
+            # Strategy VaR
+            strategies_var[strategy] = np.sqrt(strategy_variance)
 
         return strategies_var
 
@@ -320,9 +288,35 @@ class ValueAtRisk:
             var_cov_algo_matrix.at[strategy, strategy] = strategy_metrics_df.loc[strategy, "Variance"]
 
         return var_cov_algo_matrix
-
+    
     @staticmethod
-    def var_from_matrix(var_cov_algo_matrix: pd.DataFrame) -> float:
+    def make_positive_semidefinite(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Converts a DataFrame into a positive semidefinite matrix by adjusting its eigenvalues.
+        Args:
+            df (pd.DataFrame): The input DataFrame.
+        Returns:
+            pd.DataFrame: The adjusted DataFrame with non-negative eigenvalues.
+        """
+        # Convert DataFrame to a numpy array
+        A = df.values
+        
+        # Performs spectral decomposition
+        eigenvalues, eigenvectors = eigh(A)
+        
+        # Adjust the eigenvalues ​​to be non-negative
+        eigenvalues_adjusted = np.maximum(eigenvalues, 0)
+        
+        # Reconstruct the adjusted matrix
+        A_adjusted = eigenvectors @ np.diag(eigenvalues_adjusted) @ eigenvectors.T
+        
+        # Converts the adjusted array back to a DataFrame
+        df_adjusted = pd.DataFrame(A_adjusted, index=df.index, columns=df.columns)
+        
+        return df_adjusted
+
+    @classmethod
+    def var_from_matrix(cls, var_cov_algo_matrix: pd.DataFrame) -> float:
         """
         Calculate the Value at Risk (VaR) from the variance-covariance matrix.
 
@@ -353,11 +347,14 @@ class ValueAtRisk:
 
         algorithm_variance = strategy_weights.dot(var_cov_algo_matrix).dot(strategy_weights)
         if algorithm_variance < 0:
-            logging.warning(f"Negative Variance obtained for 'Gea Algorithm'")
-            algorithm_var = np.nan
-        else:
-            # Calculate VaR
-            algorithm_var = np.sqrt(algorithm_variance)
+            logging.warning(
+                f"Negative Variance obtained for 'Gea Algorithm', converting covariance matrix to positive semidefinite ..."
+            )
+            var_cov_matrix_adjusted = cls.make_positive_semidefinite(var_cov_algo_matrix)
+            algorithm_variance = strategy_weights.dot(var_cov_matrix_adjusted).dot(strategy_weights)
+        
+        # Calculate VaR
+        algorithm_var = np.sqrt(algorithm_variance)
 
         return algorithm_var
 
