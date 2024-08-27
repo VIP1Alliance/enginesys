@@ -114,9 +114,7 @@ class Filters:
         AssertionError
             If no sectors are selected after applying the filter.
         """
-        # filter_sectors = self._get_filter_threshold()
-        filter_sectors = self.filter_sectors
-        result = pd.merge(self.recommendations, filter_sectors, how='left', on=['strategy', 'sector'])
+        result = pd.merge(self.recommendations, self.filter_sectors, how='left', on=['strategy', 'sector'])
         buy_ = result[(result["side"] == "BUY") & (result["buy"] == 1)]
         sell_ = result[(result["side"] == "SELL") & (result["sell"] == 1)]
         df1 = pd.concat([buy_, sell_], axis=0)
