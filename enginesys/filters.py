@@ -69,6 +69,9 @@ def assign_ranking_asg(df: pd.DataFrame, ranking_df: pd.DataFrame,
         raise
 
 class Filters:
+    """
+    A class to apply various financial filters on recommendations data.
+    """
     def __init__(self, recommendations: pd.DataFrame, filter_sectors: pd.DataFrame) -> None:
         self.recommendations = recommendations
         self.filter_sectors = filter_sectors
@@ -81,13 +84,11 @@ class Filters:
     def filter_sectors(self, filter_sec: pd.DataFrame):
         self._filter_sectors = filter_sec
 
-
-    # # Build filter threshold 1.6
-    # def build_filter_threshold(self):
-    #     pass
-
     # Build filter ASG (this filter is just read from external source)
     def build_filter_asg(self):
+        """
+        Implement once there is a clear path for it!!!
+        """
         raise ("Not implemented.")
 
     # Load filter threshold 1.6
@@ -100,8 +101,21 @@ class Filters:
 
     # Apply filter threshold 1.6
     def filter_threshold(self) -> pd.DataFrame:
-        """threshold 1.6 filter here goes function 'filter by sectors' """
-        filter_sectors = self._get_filter_threshold()
+        """
+        Applies the threshold 1.6 filter on the recommendations data.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame containing the filtered recommendations based on the threshold 1.6 criteria.
+
+        Raises
+        ------
+        AssertionError
+            If no sectors are selected after applying the filter.
+        """
+        # filter_sectors = self._get_filter_threshold()
+        filter_sectors = self.filter_sectors
         result = pd.merge(self.recommendations, filter_sectors, how='left', on=['strategy', 'sector'])
         buy_ = result[(result["side"] == "BUY") & (result["buy"] == 1)]
         sell_ = result[(result["side"] == "SELL") & (result["sell"] == 1)]
@@ -113,6 +127,22 @@ class Filters:
     # Apply filter ASG
     def filter_asg(self, column_ranking: str = "ranking_asg",
                    no_ranking_tag: str = 'No reporta') -> pd.DataFrame:
+        """
+        Applies the ASG filter on the recommendations data.
+
+        Parameters
+        ----------
+        column_ranking : str, optional
+            The name of the column containing the ASG ranking data (default is "ranking_asg").
+        no_ranking_tag : str, optional
+            The tag used to indicate that a recommendation does not have an ASG ranking
+            (default is 'No reporta').
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame containing the filtered recommendations based on the ASG ranking criteria.
+        """
         ranking = self._get_filter_asg()
         ticker_asg = assign_ranking_asg(df=self.recommendations, ranking_df=ranking, ticker_model='ticker')
         ticker_asg[column_ranking] = ticker_asg[column_ranking].replace(no_ranking_tag, 0) 
@@ -135,7 +165,11 @@ class Filters:
 
 class FilterThreshold():
     """
-    1.6 filter over ETFs sectors.
+    A class to apply the 1.6 filter over ETFs sectors within a DataFrame.
+
+    This class is designed to filter sector data based on specific criteria 
+    (such as a threshold of 1.6 on the absolute max/min ratio) and format 
+    the data for further processing.
     """
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
@@ -168,12 +202,21 @@ class FilterThreshold():
         -------
         pd.DataFrame
             The formatted DataFrame with columns 'strategy', 'sector', 'enter', 'buy', and 'sell'.
+        
+        Raises
+        ------
+        ValueError
+            If the required columns are missing from the input DataFrame.
         """
         # Validate that the necessary columns exist
         required_columns = {strategy_col, sector_col, side_col}
         if not required_columns.issubset(df.columns):
             missing_cols = required_columns - set(df.columns)
             raise ValueError(f"Missing required columns: {missing_cols}")
+        
+        if strategy_col == 'estrategia':
+            df = df.rename(columns={strategy_col: 'strategy'})
+            strategy_col = 'strategy'
 
         # Group by 'estrategia', 'sector', and 'side', then count occurrences
         filter_sectors = df.groupby([strategy_col, sector_col, side_col]).size().reset_index(name="count")
@@ -196,7 +239,7 @@ class FilterThreshold():
     @staticmethod
     def filter_positions(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Separate the DataFrame into buy and sell positions.
+        Separates the DataFrame into buy and sell positions based on the 'side' column.
         """
         buy_df = df[df['side'] == 'BUY']
         sell_df = df[df['side'] == 'SELL']
@@ -255,7 +298,10 @@ class FilterThreshold():
 
     def process_file(self) -> pd.DataFrame:
         """
-        Orchestrate the steps to process the dataFrame and filter the data based on conditions.
+        Orchestrates the steps to process the DataFrame and apply the 1.6 filter.
+
+        This method separates the DataFrame into buy and sell positions, applies the 
+        filtering criteria to each, and then concatenates the results.
         """
         buy_df, sell_df = self.filter_positions(self.df)
         selected_buy = self.filter_condition(buy_df)
