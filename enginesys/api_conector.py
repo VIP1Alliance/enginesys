@@ -4,9 +4,9 @@ import os
 import re
 from datetime import datetime
 from functools import lru_cache
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List
 
-import numpy as np
+from matplotlib import ticker
 import pandas as pd
 import yfinance as yf
 
@@ -52,67 +52,102 @@ class APIConnector:
             
         return data
     
-    
-    @staticmethod
-    @lru_cache(maxsize=None)
+    @classmethod
     def fetch_yf_prices(
-        tickers: Union[str, Tuple[str, ...]], 
+        cls, 
+        tickers: Union[str, List[str]], 
         start: Optional[str] = None,
         end: Optional[str] = None,
-        period: str = "1mo", 
-        interval: str = "1mo", 
-        date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
+        period: Optional[str] = "1mo", 
+        update_mins: Optional[int] = 1,
+    ) -> pd.DataFrame:
+        if update_mins < 1:
+            logging.error("Update minutes must be greater than 0")
+            update_mins = 1
+        update_time = (
+            datetime.now()
+            .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
+            .strftime("%Y-%m-%d %H:%M")
+        )
+        if not isinstance(tickers, list) and not isinstance(tickers, str):
+            raise ValueError("Tickers must be a list of strings or a single string")
+        tickers = tickers if isinstance(tickers, list) else [tickers]
+        return cls._fetch_yf_prices(update_time, tuple(tickers), start, end, period)
+    
+    @staticmethod
+    # @lru_cache(maxsize=None)
+    def _fetch_yf_prices(
+        update_time: str,
+        tickers: Tuple[str, ...], 
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        period: Optional[str] = "1mo", 
     ) -> pd.DataFrame:
         
-        if len(tickers ) == 0:
+        if len(tickers) == 0:
             logging.error("No tickers provided")
             return None
         
         # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
-        extensions_dict = {
-            r"\.LSE$": ".L",      # London Stock Exchange
-            r"\.EPA$": ".PA",     # Euronext Paris
-            r"\.BIT$": ".MI",     # Borsa Italiana (Milan)
-            r"\.BME$": ".MC",     # Bolsa de Madrid
-            r"\.FRA$": ".F",      # Frankfurt Stock Exchange
-            r"\.AMS$": ".AS",     # Euronext Amsterdam
-            r"\.SWX$": ".SW",     # Swiss Exchange
-            r"\.VIE$": ".VI",     # Vienna Stock Exchange
-            r"\.STO$": ".ST",     # Nasdaq Stockholm
-            r"\.HEL$": ".HE",     # Nasdaq Helsinki
-            r"\.CPH$": ".CO",     # Nasdaq Copenhagen
-            r"\.OSL$": ".OL",     # Oslo Stock Exchange
-            r"\.XETRA$": ".DE",   # XETRA
+        yahoo_ext = {
+            "LSE": "L",      # London Stock Exchange
+            "EPA": "PA",     # Euronext Paris
+            "BIT": "MI",     # Borsa Italiana (Milan)
+            "BME": "MC",     # Bolsa de Madrid
+            "FRA": "F",      # Frankfurt Stock Exchange
+            "AMS": "AS",     # Euronext Amsterdam
+            "SWX": "SW",     # Swiss Exchange
+            "VIE": "VI",     # Vienna Stock Exchange
+            "STO": "ST",     # Nasdaq Stockholm
+            "HEL": "HE",     # Nasdaq Helsinki
+            "CPH": "CO",     # Nasdaq Copenhagen
+            "OSL": "OL",     # Oslo Stock Exchange
+            "XETRA": "DE",   # XETRA
         }
+        inv_yahoo_ext = {yf_ext: std_ext for std_ext, yf_ext in yahoo_ext.items()}
 
-        # Function to apply replacements using the dictionary
-        def get_yf_extensions(symbol, extensions_dict):
-            for extension, yf_extension in extensions_dict.items():
-                symbol = re.sub(extension, yf_extension, symbol)
+        # Function to map ticker extensions thrruogh a dictionary
+        def map_symbol_extension(symbol: str, extension_map: dict) -> str:
+            for extension_in, extension_out in extension_map.items():
+                reg_exp = rf"\.{re.escape(extension_in)}$"
+                new_extension = f".{extension_out}"
+                symbol = re.sub(reg_exp, new_extension, symbol)
             return symbol
 
         # Apply the replacements to the list of strings
-        yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
+        yf_tickers = [map_symbol_extension(ticker, yahoo_ext) for ticker in tickers]
 
         kwargs = {
             "tickers": yf_tickers,
-            "period": period,
-            "interval": interval,
             "prepost": False,
             "auto_adjust": False,
         }
+        if period is not None:
+            kwargs["period"] = period
         if start is not None:
             kwargs['start'] = start
         if end is not None:
             kwargs['end'] = end
         
-        logging.info("Downloading data from Yahoo Finance API ...")
         try:
             yf_data = yf.download(**kwargs)
+            logging.info("Downloading data from Yahoo Finance API ...")
         except Exception as e:
             logging.error(f"Error downloading data from Yahoo Finance API: {e}")
             yf_data = None
-            
+        
+        # If there is only one ticker and the columns are not a MultiIndex, create a MultiIndex
+        if len(yf_tickers) == 1 and not isinstance(yf_data.columns, pd.MultiIndex):
+            yf_data.columns = pd.MultiIndex.from_product([yf_data.columns, [yf_tickers[0]]], names=['Price', 'Ticker'])
+        
+        # Replace the ticker extensions to the standard ones
+        multiindex_cols = yf_data.columns
+        new_multiindex = [
+            (price, map_symbol_extension(ticker, inv_yahoo_ext))
+            for price, ticker in multiindex_cols
+        ]
+        yf_data.columns = pd.MultiIndex.from_tuples(new_multiindex)
+        
         return yf_data
 
 
