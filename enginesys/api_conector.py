@@ -6,7 +6,6 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Optional, Tuple, Union, List
 
-from matplotlib import ticker
 import pandas as pd
 import yfinance as yf
 
@@ -27,13 +26,13 @@ class APIConnector:
     
     @staticmethod
     @lru_cache(maxsize=None)
-    def fetch_eodhd_prices(
+    def _fetch_eodhd_prices(
+        update_time: str,
         tickers: Union[str, Tuple[str, ...]], 
         start: str, 
         end: str, 
-        period: str = "m",
-        complete_month: bool = False,
-        date: str = datetime.now().strftime("%Y-%m-%d %H:%M"),
+        period: Optional[str] = "m",
+        complete_month: Optional[bool] = False,
     ) -> pd.DataFrame:
         end_corrected = end
         if period == "m" and complete_month:
@@ -42,7 +41,7 @@ class APIConnector:
             end_corrected = end_dt.replace(day=last_day_month)
             end_corrected.strftime("%Y-%m-%d")
 
-        logging.info("Requesting data from EODHD ...")
+        logging.info("Requesting data from EODHD API...")
         try:
             data = eodhd.download_multi(
                 tickers=tickers, start=start, end=end_corrected, period=period
@@ -53,12 +52,13 @@ class APIConnector:
         return data
     
     @classmethod
-    def fetch_yf_prices(
+    def fetch_eodhd_prices(
         cls, 
         tickers: Union[str, List[str]], 
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        period: Optional[str] = "1mo", 
+        start: str,
+        end: str,
+        period: Optional[str] = "m",
+        complete_month: Optional[bool] = False,
         update_mins: Optional[int] = 1,
     ) -> pd.DataFrame:
         if update_mins < 1:
@@ -72,7 +72,7 @@ class APIConnector:
         if not isinstance(tickers, list) and not isinstance(tickers, str):
             raise ValueError("Tickers must be a list of strings or a single string")
         tickers = tickers if isinstance(tickers, list) else [tickers]
-        return cls._fetch_yf_prices(update_time, tuple(tickers), start, end, period)
+        return cls._fetch_eodhd_prices(update_time, tuple(tickers), start, end, period, complete_month)
     
     @staticmethod
     # @lru_cache(maxsize=None)
@@ -129,9 +129,9 @@ class APIConnector:
         if end is not None:
             kwargs['end'] = end
         
+        logging.info("Requesting data from Yahoo Finance API ...")
         try:
             yf_data = yf.download(**kwargs)
-            logging.info("Downloading data from Yahoo Finance API ...")
         except Exception as e:
             logging.error(f"Error downloading data from Yahoo Finance API: {e}")
             yf_data = None
@@ -149,9 +149,38 @@ class APIConnector:
         yf_data.columns = pd.MultiIndex.from_tuples(new_multiindex)
         
         return yf_data
+    
+    @classmethod
+    def fetch_yf_prices(
+        cls, 
+        tickers: Union[str, List[str]], 
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        period: Optional[str] = "1mo", 
+        update_mins: Optional[int] = 1,
+    ) -> pd.DataFrame:
+        if update_mins < 1:
+            logging.error("Update minutes must be greater than 0")
+            update_mins = 1
+        update_time = (
+            datetime.now()
+            .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
+            .strftime("%Y-%m-%d %H:%M")
+        )
+        if not isinstance(tickers, list) and not isinstance(tickers, str):
+            raise ValueError("Tickers must be a list of strings or a single string")
+        tickers = tickers if isinstance(tickers, list) else [tickers]
+        return cls._fetch_yf_prices(update_time, tuple(tickers), start, end, period)
 
-
-    def download_eodhd_prices(self, file_name, tickers, start, end, period="m", format: str ="pickle"):
+    def download_eodhd_prices(
+        self, 
+        file_name, 
+        tickers, 
+        start, 
+        end, 
+        period="m", 
+        format: str ="pickle"
+    ):
         """
         Downloads data from EODHD API for the given tickers and saves it to a file.
         
@@ -169,8 +198,6 @@ class APIConnector:
             The period for the data to download. Defaults to 'm'.
         format: str, optional
             The format to save the downloaded data. Defaults to 'pickle'.
-        force_download: bool, optional
-            Whether to force download the data even if it was previously downloaded. Defaults to False.
         
         Raises
         ------
@@ -205,9 +232,17 @@ class APIConnector:
             logging.error(f"Unsupported format: '{format}'")
             
         logging.info(f"Data downloaded from EODHD API and saved to file '{file_name}'")
-
     
-    def download_yf_prices(self, file_name, tickers, start, end, period="1mo", interval="1mo", format: str ="pickle"):
+    def download_yf_prices(
+        self, 
+        file_name, 
+        tickers, 
+        start, 
+        end, 
+        period="1mo", 
+        # interval="1mo", 
+        format: str ="pickle"
+    ):
         """
         Downloads data from Yahoo Finance API for the given tickers and saves it to a file.
         
@@ -227,8 +262,6 @@ class APIConnector:
             The interval for the data to download. Defaults to '1mo'.
         format: str, optional
             The format to save the downloaded data. Defaults to 'pickle'.
-        force_download: bool, optional
-            Whether to force download the data even if it was previously downloaded. Defaults to False.
         
         Raises
         ------
@@ -239,45 +272,13 @@ class APIConnector:
         -------
         None
         """
-        # Dictionary with defined replacements, where each key ends with '$' to indicate the end of the string
-        extensions_dict = {
-            r"\.LSE$": ".L",      # London Stock Exchange
-            r"\.EPA$": ".PA",     # Euronext Paris
-            r"\.BIT$": ".MI",     # Borsa Italiana (Milan)
-            r"\.BME$": ".MC",     # Bolsa de Madrid
-            r"\.FRA$": ".F",      # Frankfurt Stock Exchange
-            r"\.AMS$": ".AS",     # Euronext Amsterdam
-            r"\.SWX$": ".SW",     # Swiss Exchange
-            r"\.VIE$": ".VI",     # Vienna Stock Exchange
-            r"\.STO$": ".ST",     # Nasdaq Stockholm
-            r"\.HEL$": ".HE",     # Nasdaq Helsinki
-            r"\.CPH$": ".CO",     # Nasdaq Copenhagen
-            r"\.OSL$": ".OL",     # Oslo Stock Exchange
-            r"\.XETRA$": ".DE",   # XETRA
-        }
-
-        # Function to apply replacements using the dictionary
-        def get_yf_extensions(symbol, extensions_dict):
-            for extension, yf_extension in extensions_dict.items():
-                symbol = re.sub(extension, yf_extension, symbol)
-            return symbol
-
-        # Apply the replacements to the list of strings
-        yf_tickers = [get_yf_extensions(ticker, extensions_dict) for ticker in tickers]
-
-        logging.info("Downloading data from Yahoo Finance API ...")
-        try:
-            yf_data = yf.download(
-                yf_tickers,
-                start=start,
-                end=end,
-                period=period,
-                interval=interval,
-                prepost=False,
-                auto_adjust=False,
-            )
-        except Exception as e:
-            logging.error(f"Error downloading data from Yahoo Finance API: {e}")
+        update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if not isinstance(tickers, list) and not isinstance(tickers, str):
+            raise ValueError("Tickers must be a list of strings or a single string")
+        
+        tickers = tickers if isinstance(tickers, list) else [tickers]
+        yf_data = self._fetch_yf_prices(update_time, tuple(tickers), start, end, period)
         
         file_path = os.path.join(self.input_data_path, file_name)
         if format == "pickle":
