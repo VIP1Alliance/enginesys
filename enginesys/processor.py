@@ -16,6 +16,9 @@ pd.DataFrame()
 
 
 class TradesProcessor:
+    
+    def __init__(self):
+        pass
 
     @staticmethod
     def split_trades_monthly(
