@@ -1,6 +1,11 @@
+import calendar
+import locale
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+
+locale.setlocale(locale.LC_ALL, 'es_ES.UTF-8')
 
 
 def plot_hist_index(log_variation, strategy, metrics_df, num_bins=10):
@@ -123,3 +128,43 @@ def plot_risk_metrics(log_variation_df: pd.DataFrame, risk_metrics_df: pd.DataFr
         strategy_plot = plot_hist_index(log_variation_df, strategy, risk_metrics_df)
         behavior_histograms[strategy] = strategy_plot
     return behavior_histograms
+
+def plot_seasonality(df: pd.DataFrame) -> None:
+    
+    # Transpose seasonality_df to have months as rows
+    df = df.copy()
+    df = df.rename(index=lambda x: calendar.month_name[x].title())
+
+    metric_labels = {
+        "performance_alg": "Rendimiento Esperado",
+        "max_loss": "Pérdida Máxima",
+        "math_expectation": "Esperanza Matemática",
+    }
+
+    # Create figure
+    fig = go.Figure()
+
+    # Add traces, one for each metric
+    for metric in df.columns:
+        fig.add_trace(
+            go.Bar(
+                x=df.index, 
+                y=df[metric], 
+                name=metric_labels.get(metric, metric)  # Meses  # Valores para cada métrica
+            )
+        )
+
+    # Update Layout 
+    fig.update_layout(
+        barmode="stack",  # Modo apilado
+        title="Estacionalidad del Algoritmo",
+        yaxis_title="Valores",
+        legend_title="Métricas de retorno esperado",
+        xaxis_tickangle=-45,  # Rotate x-axis labels
+        height=550,  # Figure Height
+        width=950,  # Figure Width
+        title_x=0.5,  # Center the title
+        template="plotly_white",  # Dark Theme
+    )
+
+    return fig
