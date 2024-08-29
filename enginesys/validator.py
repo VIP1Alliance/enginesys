@@ -39,10 +39,10 @@ class Validator:
             missing_cols = required_cols - input_cols
             logging.warning(
                 "The columns in the DataFrame do not match the required columns.\n"
-                "Missing columns: {}.\n"
-                "Extra columns: {}.".format(missing_cols, extra_cols)
+                "Extra columns: {}.\n"
+                "Missing columns: {}.".format(extra_cols, missing_cols)
             )
-            return missing_cols, extra_cols
+            return extra_cols, missing_cols
         return [], []
     
     @staticmethod
@@ -75,10 +75,10 @@ class Validator:
             missing_strats = required_strats - input_strats
             logging.warning(
                 "The strategy labels in the DataFrame do not match the required labels.\n"
-                "Missing strategy labels: {}.\n"
-                "Extra strategy labels: {}.".format(missing_strats, extra_strats)
+                "Extra strategy labels: {}.\n"
+                "Missing strategy labels: {}.".format(extra_strats, missing_strats)
             )
-            return missing_strats, extra_strats
+            return extra_strats, missing_strats
         else:
             return [], []
     
