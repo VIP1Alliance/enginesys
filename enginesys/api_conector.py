@@ -59,23 +59,24 @@ class APIConnector:
         end: str,
         period: Optional[str] = "m",
         complete_month: Optional[bool] = False,
-        update_mins: Optional[int] = 1,
+        update_mins: Optional[int] = None,
     ) -> pd.DataFrame:
-        if update_mins < 1:
-            logging.error("Update minutes must be greater than 0")
-            update_mins = 1
-        update_time = (
-            datetime.now()
-            .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
-            .strftime("%Y-%m-%d %H:%M")
-        )
+        if update_mins:
+            update_time = (
+                datetime.now()
+                .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
+                .strftime("%Y-%m-%d %H:%M")
+            )
+        else:
+            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
         if not isinstance(tickers, list) and not isinstance(tickers, str):
             raise ValueError("Tickers must be a list of strings or a single string")
         tickers = tickers if isinstance(tickers, list) else [tickers]
         return cls._fetch_eodhd_prices(update_time, tuple(tickers), start, end, period, complete_month)
     
     @staticmethod
-    # @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)
     def _fetch_yf_prices(
         update_time: str,
         tickers: Tuple[str, ...], 
@@ -157,16 +158,17 @@ class APIConnector:
         start: Optional[str] = None,
         end: Optional[str] = None,
         period: Optional[str] = "1mo", 
-        update_mins: Optional[int] = 1,
+        update_mins: Optional[int] = None,
     ) -> pd.DataFrame:
-        if update_mins < 1:
-            logging.error("Update minutes must be greater than 0")
-            update_mins = 1
-        update_time = (
-            datetime.now()
-            .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
-            .strftime("%Y-%m-%d %H:%M")
-        )
+        if update_mins:
+            update_time = (
+                datetime.now()
+                .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
+                .strftime("%Y-%m-%d %H:%M")
+            )
+        else:
+            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
         if not isinstance(tickers, list) and not isinstance(tickers, str):
             raise ValueError("Tickers must be a list of strings or a single string")
         tickers = tickers if isinstance(tickers, list) else [tickers]
