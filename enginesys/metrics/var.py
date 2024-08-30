@@ -499,6 +499,7 @@ class ValueAtRisk:
 
             # Create a DataFrame with the VaR and EWMA for each strategy
             self.risk_metrics_df = pd.DataFrame(columns=["VaR", "EWMA"])
+            self.risk_metrics_df.index.name = "strategy"
             for strategy in self.strategy_indices_df.columns:
                 if strategy in strategies_var and strategy in strategies_ewma:
                     strategy_var = -strategies_var[strategy]
