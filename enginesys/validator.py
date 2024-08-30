@@ -37,11 +37,6 @@ class Validator:
         if not input_cols == required_cols:
             extra_cols = input_cols - required_cols
             missing_cols = required_cols - input_cols
-            logging.warning(
-                "The columns in the DataFrame do not match the required columns.\n"
-                "Extra columns: {}.\n"
-                "Missing columns: {}.".format(extra_cols, missing_cols)
-            )
             return extra_cols, missing_cols
         return [], []
     
@@ -73,11 +68,6 @@ class Validator:
         if not input_strats == required_strats:
             extra_strats = input_strats - required_strats
             missing_strats = required_strats - input_strats
-            logging.warning(
-                "The strategy labels in the DataFrame do not match the required labels.\n"
-                "Extra strategy labels: {}.\n"
-                "Missing strategy labels: {}.".format(extra_strats, missing_strats)
-            )
             return extra_strats, missing_strats
         else:
             return [], []
@@ -111,11 +101,6 @@ class Validator:
         if prices_date.isna().any() or (prices_date == 0).any():
             null_prices = list(prices_date[prices_date.isna()].index)
             zero_prices = list(prices_date[prices_date == 0].index)
-            logging.warning(
-                "The price of some tickers could not be obtained from {} for the date: '{}'\n"
-                "Tickers with no price: {}.\n"
-                "Tickers with price 0.0: {}".format(source, date, null_prices, zero_prices)
-            )
             return null_prices, zero_prices
         else:
             return [], []
