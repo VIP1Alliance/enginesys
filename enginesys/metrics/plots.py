@@ -168,3 +168,37 @@ def plot_seasonality(df: pd.DataFrame) -> None:
     )
 
     return fig
+
+def plot_candlestick(prices_df, symbol):
+    
+    ticker_df = prices_df.xs(symbol, axis=1, level=1).dropna()
+    
+    # Create the figure with the candlestick chart
+    fig = go.Figure(data=[go.Candlestick(
+        x=ticker_df.index,
+        open=ticker_df['open'],
+        high=ticker_df['high'],
+        low=ticker_df['low'],
+        close=ticker_df['close']
+    )])
+
+    # Customize the figure layout
+    fig.update_layout(
+        title={
+            "text": symbol,
+            "y": 0.9,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+            "font": dict(family="Arial", size=24),
+        },
+        yaxis_title='Price',
+        xaxis_title='Date',
+        xaxis_rangeslider_visible=False,
+        template="plotly_dark",
+        height=500,
+        width=1100,
+    )
+
+    # return the figure
+    return fig
