@@ -199,6 +199,7 @@ class APIConnector:
             "tickers": yf_tickers,
             "prepost": False,
             "auto_adjust": False,
+            "progress": False,
         }
         if period is not None:
             kwargs["period"] = period
