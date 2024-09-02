@@ -144,7 +144,7 @@ class Validator:
         return data_df
     
     @staticmethod
-    def validate_tickers(prices_df: pd.DataFrame, tickers: list) -> pd.DataFrame:
+    def validate_tickers(prices_df: pd.DataFrame, req_tickers: list) -> pd.DataFrame:
         """
         Validates the tickers in the given DataFrame against a list of tickers.
         
