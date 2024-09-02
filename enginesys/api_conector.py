@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 from functools import lru_cache
-from typing import Optional, Tuple, Union, List
+from typing import List, Optional, Tuple, Union
 
 import pandas as pd
 import yfinance as yf
@@ -27,13 +27,39 @@ class APIConnector:
     @staticmethod
     @lru_cache(maxsize=None)
     def _fetch_eodhd_prices(
-        update_time: str,
+        update_time: str, # This is used to cache the data
         tickers: Union[str, Tuple[str, ...]], 
         start: str, 
         end: str, 
         period: Optional[str] = "m",
         complete_month: Optional[bool] = False,
     ) -> pd.DataFrame:
+        """
+        Fetches EODHD prices from the API, update.
+        
+        Parameters
+        ----------
+        update_time :str
+            The time to update the data. This is used to cache the data.
+        tickers :Union[str, Tuple[str, ...]]
+            The tickers to fetch prices for.
+        start :str
+            The start date.
+        end :str
+            The end date.
+        period :Optional[str]
+            The period. Defaults to "m".
+        complete_month :Optional[bool]
+            Whether to fetch complete month data. Defaults to False.
+        
+        Returns
+        -------
+            pd.DataFrame: The fetched data.
+        
+        Raises
+        ------
+            Exception: If there is an error downloading data from the EODHD API.
+        """
         end_corrected = end
         if period == "m" and complete_month:
             end_dt = datetime.strptime(end, "%Y-%m-%d")
@@ -47,7 +73,7 @@ class APIConnector:
                 tickers=tickers, start=start, end=end_corrected, period=period
             )
         except Exception as e:
-            logging.error(f"Error downloading data from EODHD API: {e}")
+            raise ValueError(f"Error downloading data from EODHD API: {e}")
             
         return data
     
@@ -61,15 +87,43 @@ class APIConnector:
         complete_month: Optional[bool] = False,
         update_mins: Optional[int] = None,
     ) -> pd.DataFrame:
+        """
+        Fetches EODHD prices from the API.
+        
+        Parameters
+        ----------
+        tickers :Union[str, Tuple[str, ...]]
+            The tickers to fetch prices for.
+        start :str
+            The start date.
+        end :str
+            The end date.
+        period :Optional[str]
+            The period. Defaults to "m".
+        complete_month :Optional[bool]
+            Whether to fetch complete month data. Defaults to False.
+        update_mins :Optional[int]
+            The frequency to update the data in minutes. Defaults to None.
+        
+        Returns
+        -------
+            pd.DataFrame: The fetched data.
+        
+        Raises
+        ------
+            Exception: If there is an error downloading data from the EODHD API.
+        """
+        # Get the current time and round it to the nearest update_mins to get new data every update_mins minutes
         if update_mins:
             update_time = (
                 datetime.now()
                 .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
                 .strftime("%Y-%m-%d %H:%M")
             )
+        # Modify the update time variable to get new data every second
         else:
             update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+
         if not isinstance(tickers, list) and not isinstance(tickers, str):
             raise ValueError("Tickers must be a list of strings or a single string")
         tickers = tickers if isinstance(tickers, list) else [tickers]
@@ -84,7 +138,30 @@ class APIConnector:
         end: Optional[str] = None,
         period: Optional[str] = "1mo", 
     ) -> pd.DataFrame:
+        """
+        Fetches EODHD prices from the API.
         
+        Parameters
+        ----------
+        update_time :str
+            The time to update the data. This is used to cache the data.
+        tickers :Union[str, Tuple[str, ...]]
+            The tickers to fetch prices for.
+        start :str
+            The start date.
+        end :str
+            The end date.
+        period :Optional[str]
+            The period. Defaults to "m".
+        
+        Returns
+        -------
+            pd.DataFrame: The fetched data.
+        
+        Raises
+        ------
+            Exception: If there is an error downloading data from the EODHD API.
+        """
         if len(tickers) == 0:
             logging.error("No tickers provided")
             return None
@@ -160,12 +237,40 @@ class APIConnector:
         period: Optional[str] = "1mo", 
         update_mins: Optional[int] = None,
     ) -> pd.DataFrame:
+        """
+        Fetches EODHD prices from the API.
+        
+        Parameters
+        ----------
+        tickers :Union[str, Tuple[str, ...]]
+            The tickers to fetch prices for.
+        start :str
+            The start date.
+        end :str
+            The end date.
+        period :Optional[str]
+            The period. Defaults to "m" (monthly).
+        update_mins :Optional[int]
+            The frequency to update the data in minutes. Defaults to None.
+        
+        Returns
+        -------
+        pd.DataFrame
+            The fetched data.
+        
+        Raises
+        ------
+        Exception: 
+            If there is an error downloading data from the EODHD API.
+        """
+        # Get the current time and round it to the nearest update_mins to get new data every update_mins minutes
         if update_mins:
             update_time = (
                 datetime.now()
                 .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
                 .strftime("%Y-%m-%d %H:%M")
             )
+        # Modify the update time variable to get new data every second
         else:
             update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
