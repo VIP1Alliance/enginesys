@@ -35,8 +35,8 @@ class Validator:
         input_cols = set(df.columns)
         required_cols = set(required_cols)
         if not input_cols == required_cols:
-            extra_cols = input_cols - required_cols
-            missing_cols = required_cols - input_cols
+            extra_cols = list(input_cols - required_cols)
+            missing_cols = list(required_cols - input_cols)
             return extra_cols, missing_cols
         return [], []
     
@@ -66,8 +66,8 @@ class Validator:
         input_strats = set(df[strategy_col].unique())
         required_strats = set(required_strats)
         if not input_strats == required_strats:
-            extra_strats = input_strats - required_strats
-            missing_strats = required_strats - input_strats
+            extra_strats = list(input_strats - required_strats)
+            missing_strats = list(required_strats - input_strats)
             return extra_strats, missing_strats
         else:
             return [], []
