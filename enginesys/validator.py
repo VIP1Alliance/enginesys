@@ -160,14 +160,10 @@ class Validator:
         pd.DataFrame
             The original DataFrame with tickers validated.
         """
-        prices_df.columns.names = ["type", "symbol"]
-        existing_tickers = list(prices_df.columns.get_level_values("symbol").unique())
-        missing_tickers = set(tickers) - set(existing_tickers)
-
-        if len(missing_tickers) > 0:
-            logging.warning(
-                f"Some tickers were not found in the data source:\n"
-                f"\tMissing tickers: {missing_tickers}"
-            )
-
-        return prices_df
+        existing_tickers = set(prices_df.columns.get_level_values(1).unique())
+        req_tickers = set(req_tickers)
+        if not req_tickers == existing_tickers:
+            extra_tickers = list(existing_tickers - req_tickers)
+            missing_tickers = list(req_tickers - existing_tickers)
+            return extra_tickers, missing_tickers
+        return [], []
