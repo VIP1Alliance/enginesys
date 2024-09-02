@@ -18,7 +18,7 @@ class Validator:
         required_cols: list
     ) -> tuple:
         """
-        Check if the dataframe contains all the required columns.
+        Check if the dataframe contains all the required columns and return the extra and missing columns.
 
         Parameters
         ----------
@@ -30,7 +30,7 @@ class Validator:
         Returns
         -------
         tuple
-            A tuple containing the missing columns and extra columns.
+            A tuple containing the extra columns and missing columns.
         """
         input_cols = set(df.columns)
         required_cols = set(required_cols)
@@ -78,23 +78,23 @@ class Validator:
         date: str, 
     ) -> tuple:
         """
-        Check for missing prices in a DataFrame.
+        Check for null and zeroo prices in a DataFrame and return the the corresponding tickers.
 
         Parameters
         ----------
-        prices_df : pandas.DataFrame
+        prices_df : pd.DataFrame
             The DataFrame containing prices.
         date : str
             The date for which prices are checked.
-        source : str, optional
-            The source of the prices. Defaults to "The source".
 
         Returns
         -------
-        null_prices : list
-            A list of tickers with missing prices.
-        zero_prices : list
-            A list of tickers with prices equal to 0.0.
+        tuple
+            A tuple containing two lists: null_prices and zero_prices.
+            null_prices : list
+                A list of tickers with missing prices.
+            zero_prices : list
+                A list of tickers with prices equal to 0.0.
         """
         prices_date = prices_df.loc[date]
         if prices_date.isna().any() or (prices_date == 0).any():
