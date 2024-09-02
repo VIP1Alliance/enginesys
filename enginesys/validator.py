@@ -76,7 +76,6 @@ class Validator:
     def validate_date_prices(
         prices_df: pd.DataFrame, 
         date: str, 
-        source: str = "The source"
     ) -> tuple:
         """
         Check for missing prices in a DataFrame.
