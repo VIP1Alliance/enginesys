@@ -63,6 +63,28 @@ class FileManager:
     def export_figures(
         self, strategy_figs: dict, date: str, to_zip: bool = False
     ) -> None:
+        """
+        Export the given strategy figures to either a folder or a zip file.
+        
+        Parameters
+        ----------
+        strategy_figs: dict
+            A dictionary containing the strategy names as keys and the corresponding figures as values.
+        date: str
+            The date in the format "YYYY-MM-DD".
+        to_zip: Optional[bool]
+            Whether to export the figures to a zip file. Defaults to False.
+        
+        Returns
+        -------
+        str:
+            The path to the exported folder or zip file.
+        
+        Raises
+        -------
+        Exception: 
+            If an error occurs while exporting the figures.
+        """
         try:
             formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
             folder_name = "risk_plots"
@@ -103,6 +125,29 @@ class FileManager:
     def export_to_excel(
         self, df: pd.DataFrame, file_name: str, date: str, folder_name: str = None
     ) -> None:
+        """
+        Export the given DataFrame to an Excel file.
+        
+        Parameters
+        ----------
+        df: pd.DataFrame
+            The DataFrame to be exported.
+        file_name: str
+            The name of the Excel file.
+        date: str
+            The date in the format 'YYYY-MM-DD'.
+        folder_name: Optional[str]
+            The name of the folder to save the file in. Defaults to None.
+        
+        Returns
+        -------
+        None
+        
+        Raises
+        -------
+        ValueError
+            If an error occurs while exporting the data.
+        """
         try:
             formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
             file_name = f"{file_name}_{formated_date}.xlsx"
