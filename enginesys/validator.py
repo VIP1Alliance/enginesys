@@ -106,39 +106,7 @@ class Validator:
             return [], []
     
     @staticmethod
-    def validate_dt_index(data_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Validates the index of a DataFrame and converts it to a DatetimeIndex if necessary.
-        
-        Parameters
-        ----------
-        data_df: pd.DataFrame
-            The DataFrame to be validated.
-        
-        Returns
-        -------
-        pd.DataFrame
-            The DataFrame with a validated index.
-        """
-        if not isinstance(data_df.index, pd.DatetimeIndex):
-            logging.warning(
-                "The index of the loaded DataFrame is not of type 'datetime'. Converting..."
-            )
-            if isinstance(data_df.index, pd.PeriodIndex):
-                formated_index = data_df.index.to_timestamp()
-            elif isinstance(data_df.index, pd.Index):
-                formated_index = pd.to_datetime(data_df.index)
-            else:
-                raise ValueError(
-                    "Unable to identify the type of index in the DataFrame"
-                )
-            data_df.index = formated_index
-
-        return data_df
-    
-    
-    @staticmethod
-    def validate_dates(
+    def validate_interval_dates(
         data_df: pd.DataFrame, 
         init_date: str, 
         end_date: str
