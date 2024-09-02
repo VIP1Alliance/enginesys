@@ -17,9 +17,9 @@ class TestAPIConnector(unittest.TestCase):
             "GOOGL": [2000.0, 2050.0, 2100.0]
         }, index=pd.to_datetime(["2022-01-01", "2022-01-02", "2022-01-03"]))
 
-    def test_validate_dates(self):
-        # Test the validate_dates method
-        validated_data_df = self.extractor.validate_dates(self.data_df, "2022-01-01", "2022-01-03")
+    def test_validate_interval_dates(self):
+        # Test the validate_interval_dates method
+        validated_data_df = self.extractor.validate_interval_dates(self.data_df, "2022-01-01", "2022-01-03")
         try:
             pdt.assert_frame_equal(self.data_df, validated_data_df)
         except AssertionError as e:
