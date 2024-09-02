@@ -73,7 +73,7 @@ class Validator:
             return [], []
     
     @staticmethod
-    def check_missing_prices(
+    def validate_date_prices(
         prices_df: pd.DataFrame, 
         date: str, 
         source: str = "The source"
