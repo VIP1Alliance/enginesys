@@ -178,7 +178,7 @@ class TradesProcessor:
         pd.DataFrame
             DataFrame with the weights assigned to each trade.
         """
-        # Generate montly data for each strategy.
+        # Generate monthly data for each strategy.
         strategy_trades_dfs = []
         for strategy in trades_df["strategy"].unique():
             strategy_trades_df = trades_df[trades_df["strategy"] == strategy].copy()
@@ -191,7 +191,7 @@ class TradesProcessor:
             trades_by_month = strategy_trades_df.groupby("date").size()
 
             # Add global and local weights columns
-            strategy_trades_df["assignation"] = strategy_trades_df["date"].apply(
+            strategy_trades_df["assignment"] = strategy_trades_df["date"].apply(
                 lambda x: strategy_investment / trades_by_month[x]
             )
             strategy_trades_df["weight_by_strategy(%)"] = strategy_trades_df[
@@ -321,8 +321,8 @@ class TradesProcessor:
         else:
             raise ValueError("Period type should be either 'year' or 'month'")
 
-        total_mounths = n_periods * months_multiplier
-        new_init_date = last_date - pd.DateOffset(months=total_mounths)
+        total_months = n_periods * months_multiplier
+        new_init_date = last_date - pd.DateOffset(months=total_months)
         truncated_data = data[date_column >= new_init_date]
 
         if not date_column_name:
@@ -528,7 +528,7 @@ class TradesProcessor:
         keep_ = []
         operation_month = {}
         for index, date in enumerate(date_open_trade):
-            # Identificar operaciones nuevas del mes
+            # Identify new operations for the month
             current_operation = backtesting_df.loc[
                 backtesting_df["date_open_next_month"] == date_open_trade[index]
             ]
@@ -538,32 +538,32 @@ class TradesProcessor:
                     - current_operation["date_open_next_month"]
                 )
 
-                # operaciones que liquidar
+                # Positions to liquidate
                 liquidar_.append(
                     cls.close_keep_position(
                         data=current_operation, duration=duration, decision="close"
                     )
                 )
 
-                # operaciones que se mantienen para el mes siguiente
+                # Positions to keep for the next month
                 keep_.append(
                     cls.close_keep_position(
                         data=current_operation, duration=duration, decision="keep"
                     )
                 )
 
-                # ------------- PESO ESTRATEGIA
+                # ------------- STRATEGY WEIGHT
                 current_operation = cls.strategy_weights(data=current_operation)
 
-                # ------------- PESO SECTOR EN EL MODELO
+                # ------------- SECTOR WEIGHT IN THE MODEL
                 current_operation = sector_weights(data=current_operation)
 
                 operation_month[str(date).split(" ")[0]] = (
-                    current_operation  # esta linea va al final
+                    current_operation  # this line goes at the end
                 )
-
+            # 
             else:
-                # unir operaciones abiertas del mes anterior con las nuevas
+                # Merge open positions from the previous month with the new ones
                 current_operation_updated = pd.concat(
                     [keep_[index - 1], current_operation]
                 )
@@ -573,7 +573,7 @@ class TradesProcessor:
                     - date_open_trade[index]
                 )
 
-                # operaciones que liquidar
+                # Positions to liquidate
                 liquidar_.append(
                     cls.close_keep_position(
                         data=current_operation_updated,
@@ -582,7 +582,7 @@ class TradesProcessor:
                     )
                 )
 
-                # operaciones que se mantienen para el mes siguiente
+                # Positions to keep for the next month
                 keep_.append(
                     cls.close_keep_position(
                         data=current_operation_updated,
@@ -591,12 +591,12 @@ class TradesProcessor:
                     )
                 )
 
-                # PESO ESTRATEGIA
+                # STRATEGY WEIGHT
                 current_operation_updated = cls.strategy_weights(
                     data=current_operation_updated
                 )
 
-                # --------------- PESO SECTOR EN EL MODELO
+                # SECTOR WEIGHT IN THE MODEL
                 current_operation_updated = sector_weights(
                     data=current_operation_updated
                 )
