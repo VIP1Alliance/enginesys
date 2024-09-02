@@ -21,6 +21,19 @@ class SeasonalityMetrics:
     
     @staticmethod
     def gen_one_month_trades_df(trades_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Generates a DataFrame containing trades for each month.
+        
+        Parameters
+        ----------
+        trades_df: pd.DataFrame
+            DataFrame containing trades data.
+        
+        Returns
+        -------
+        pd.DataFrame: 
+            DataFrame containing trades for each month.
+        """
         dfs = []
         for month in range(1, 13):
             if month == 12:
@@ -42,13 +55,37 @@ class SeasonalityMetrics:
 
     @staticmethod
     def get_year_metrics(trades_df: pd.DataFrame, vpv_pv: int, investment: int) -> pd.DataFrame:
+        """
+        Calculate year metrics based on the given trades dataframe.
+        
+        Parameters
+        ----------
+        trades_df: pd.DataFrame
+            The trades dataframe containing the necessary data.
+        vpv_pv: int
+            The value per point per volume.
+        investment: int
+            The total investment amount.
+        
+        Returns
+        -------
+        pd.DataFrame
+            The calculated year metrics dataframe.
+        """
 
         def get_performance_alg(x):
+            """
+            Calculates the performance value of a given input.
+            """
             return_sum = x.sum()
             performance_val = (return_sum * vpv_pv) / investment
             return performance_val*100
 
         def get_max_loss(x):
+            """
+            Calculates the maximum loss value based on the given input.
+            """
+            loss_value = (x.min() * vpv_pv) / investment
             loss_value  = (x.min() * vpv_pv) / investment
             return loss_value
         
@@ -77,6 +114,13 @@ class SeasonalityMetrics:
         return year_metrics
 
     def gen_seasonality(self) -> pd.DataFrame:
+        """
+        Generates seasonality metrics based on the trades data.
+        """
         self.one_month_trades_df = self.gen_one_month_trades_df(self.trades_df)
-        self.year_metrics = self.get_year_metrics(self.one_month_trades_df, self.vpv_pv, self.investment)
-        self.seasonality_df = self.year_metrics.groupby(level="month")[["performance_alg", "max_loss", "math_expectation"]].mean()
+        self.year_metrics = self.get_year_metrics(
+            self.one_month_trades_df, self.vpv_pv, self.investment
+        )
+        self.seasonality_df = self.year_metrics.groupby(level="month")[
+            ["performance_alg", "max_loss", "math_expectation"]
+        ].mean()
