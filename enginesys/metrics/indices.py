@@ -5,18 +5,19 @@ import pandas as pd
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-pd.DataFrame()
 
-# ======================================================================================= #
-# ======================= Functions to calculate the GEA indices ======================== #
-# ======================================================================================= #
 
-class TradeProcessor:
+# ===================================================================================== #
+# ======================= Methods to calculate the GEA indices ======================== #
+# ===================================================================================== #
+
+class AlgorithmIndices:
 
     def __init__(self):
         pass
 
-    def get_gea_indices(self, trades_df: pd.DataFrame, strategy_weights: dict):
+    @staticmethod
+    def get_gea_indices(trades_df: pd.DataFrame, strategy_weights: dict):
         """
         Calculates a cumulative index for trading strategies based on monthly trade variations.
 
@@ -72,8 +73,8 @@ class TradeProcessor:
         
         return indices_df
 
+    @staticmethod
     def get_benchmark_index(
-        self,
         prices_df: pd.DataFrame,
         benchmark: str,
     ):
