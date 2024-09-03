@@ -163,7 +163,7 @@ def download_multi(tickers, start, end, period='d', filter_=None,
     if isinstance(tickers, str):
         tickers = [tickers]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() * 4) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() * 2) as executor:
         executor.map(partial(handle_data, start=start, end=end,
                              period=period, filter_=filter_),
                      tickers)
