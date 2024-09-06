@@ -373,11 +373,7 @@ class TradesProcessor:
     @staticmethod
     def strategy_weights(
         data: pd.DataFrame,
-        strategies: list = [
-            "R Cuadrado",
-            "Rotación Alfa",
-            "Rotación de Mometum Sectorial",
-        ],
+        strategies: list,
     ):
         """
         Assign weights to different strategies based on the number of tickers.
@@ -395,12 +391,12 @@ class TradesProcessor:
             DataFrame with weights assigned to the strategies.
         """
         data = data.copy()
-        cant_tickers_per_strategy = data["ticker"].value_counts()
+        tickers_per_strategy = data["strategy"].value_counts()
 
         for strategy in strategies:
             try:
-                n_ = cant_tickers_per_strategy.loc[strategy]
-                data.loc[data["ticker"] == strategy, "peso ticker/estrategia (%)"] = (
+                n_ = tickers_per_strategy.loc[strategy]
+                data.loc[data["ticker"] == strategy, "ticker_strategy_weight_pct"] = (
                     round(100 / n_, 2)
                 )
                 logging.info(
@@ -409,7 +405,6 @@ class TradesProcessor:
             except KeyError:
                 logging.warning(f"Strategy {strategy} not found in the data.")
                 continue
-
         return data
 
     @staticmethod
@@ -427,100 +422,16 @@ class TradesProcessor:
         pd.DataFrame
             DataFrame with sector weights assigned for each strategy.
         """
-
-        def weights(
-            df: pd.DataFrame, strategy: str, sector_counts: pd.Series
-        ) -> pd.DataFrame:
-            for sector in sector_counts.index:
-                mask = (df["ticker"] == strategy) & (df["sector"] == sector)
-                df.loc[mask, "peso del sector / estrategia"] = (
-                    df.loc[mask, "peso ticker/estrategia (%)"]
-                    * sector_counts.loc[sector]
-                )
-                logging.info(
-                    f"Assigned sector weight for strategy: {strategy}, sector: {sector}"
-                )
-            return df
-
-        data["peso del sector / estrategia"] = 0.0
-
-        # Extract sectors and their counts for each strategy
-        strategies = {
-            "Rotación Alfa": data.loc[
-                data["ticker"] == "Rotación Alfa", "sector"
-            ].value_counts(),
-            "R Cuadrado": data.loc[
-                data["ticker"] == "R Cuadrado", "sector"
-            ].value_counts(),
-            "Rotación de Mometum Sectorial": data.loc[
-                data["ticker"] == "Rotación de Mometum Sectorial", "sector"
-            ].value_counts(),
-        }
-
-        # Assign weights for each strategy
-        for strategy, sector_counts in strategies.items():
-            if not sector_counts.empty:
-                data = weights(data, strategy, sector_counts)
-            else:
-                logging.warning(f"No sectors found for strategy: {strategy}")
-
+        strat_sect_weigths = data.groupby(["strategy", "sector"]).size()
+        data["sector_weight_strategy"] = data.apply(
+            lambda row: row["ticker_strategy_weight_pct"]
+            * strat_sect_weigths[row["strategy"], row["sector"]],
+            axis=1,
+        )
         return data
 
     @classmethod
-    def gen_operation_month(cls, backtesting_df: pd.DataFrame):
-
-        def sector_weights(data: pd.DataFrame) -> pd.DataFrame:
-            """
-            Calculate and assign sector weights for each strategy in the data.
-
-            Parameters
-            ----------
-            data : pd.DataFrame
-                DataFrame containing the data to be processed.
-
-            Returns
-            -------
-            pd.DataFrame
-                DataFrame with sector weights assigned for each strategy.
-            """
-
-            def weights(
-                df: pd.DataFrame, strategy: str, sector_counts: pd.Series
-            ) -> pd.DataFrame:
-                for sector in sector_counts.index:
-                    mask = (df["ticker"] == strategy) & (df["sector"] == sector)
-                    df.loc[mask, "peso del sector / estrategia"] = (
-                        df.loc[mask, "peso ticker/estrategia (%)"]
-                        * sector_counts.loc[sector]
-                    )
-                    logging.info(
-                        f"Assigned sector weight for strategy: {strategy}, sector: {sector}"
-                    )
-                return df
-
-            data["peso del sector / estrategia"] = 0.0
-
-            # Extract sectors and their counts for each strategy
-            strategies = {
-                "Rotación Alfa": data.loc[
-                    data["ticker"] == "Rotación Alfa", "sector"
-                ].value_counts(),
-                "R Cuadrado": data.loc[
-                    data["ticker"] == "R Cuadrado", "sector"
-                ].value_counts(),
-                "Rotación de Mometum Sectorial": data.loc[
-                    data["ticker"] == "Rotación de Mometum Sectorial", "sector"
-                ].value_counts(),
-            }
-
-            # Assign weights for each strategy
-            for strategy, sector_counts in strategies.items():
-                if not sector_counts.empty:
-                    data = weights(data, strategy, sector_counts)
-                else:
-                    logging.warning(f"No sectors found for strategy: {strategy}")
-
-            return data
+    def gen_operation_month(cls, backtesting_df: pd.DataFrame, strategies: list):
 
         date_open_trade = backtesting_df["date_open_next_month"].sort_values().unique()
 
@@ -553,10 +464,10 @@ class TradesProcessor:
                 )
 
                 # ------------- STRATEGY WEIGHT
-                current_operation = cls.strategy_weights(data=current_operation)
-
+                current_operation = cls.strategy_weights(data=current_operation, strategies=strategies)
+                
                 # ------------- SECTOR WEIGHT IN THE MODEL
-                current_operation = sector_weights(data=current_operation)
+                current_operation = cls.sector_weights(data=current_operation)
 
                 operation_month[str(date).split(" ")[0]] = (
                     current_operation  # this line goes at the end
@@ -593,11 +504,12 @@ class TradesProcessor:
 
                 # STRATEGY WEIGHT
                 current_operation_updated = cls.strategy_weights(
-                    data=current_operation_updated
+                    data=current_operation_updated, 
+                    strategies=strategies
                 )
 
                 # SECTOR WEIGHT IN THE MODEL
-                current_operation_updated = sector_weights(
+                current_operation_updated = cls.sector_weights(
                     data=current_operation_updated
                 )
 
