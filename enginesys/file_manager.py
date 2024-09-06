@@ -9,6 +9,16 @@ import pandas as pd
 class FileManager:
 
     def __init__(self, data_path: str):
+        """
+        Initializes a FileManager object
+
+        Parameters
+        ------
+        data_path: str
+            The path to the main data directory
+
+        """
+        # Rest of the code...
         self.data_path = data_path
         self.input_data_path = os.path.join(self.data_path, "input")
         self.output_data_path = os.path.join(self.data_path, "output")
@@ -35,7 +45,7 @@ class FileManager:
         pandas.DataFrame:
             The loaded data.
 
-        Raises:
+        Raises
         -------
         FileNotFoundError
             If the file does not exist.
