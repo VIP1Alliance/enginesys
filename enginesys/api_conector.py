@@ -15,6 +15,15 @@ import enginesys.eodhd.eodhd as eodhd
 class APIConnector:
 
     def __init__(self, data_path):
+        """
+        Initializes a APIConnector object
+
+        Parameters
+        ------
+        data_path: str
+            The path to the main data directory
+
+        """
         self.data_path = data_path
         self.input_data_path = os.path.join(self.data_path, "input")
         self.output_data_path = os.path.join(self.data_path, "output")
@@ -67,7 +76,6 @@ class APIConnector:
             end_corrected = end_dt.replace(day=last_day_month)
             end_corrected.strftime("%Y-%m-%d")
 
-        logging.info("Requesting data from EODHD API...")
         try:
             data = eodhd.download_multi(
                 tickers=tickers, start=start, end=end_corrected, period=period
@@ -208,7 +216,6 @@ class APIConnector:
         if end is not None:
             kwargs['end'] = end
         
-        logging.info("Requesting data from Yahoo Finance API ...")
         try:
             yf_data = yf.download(**kwargs)
         except Exception as e:
@@ -321,7 +328,6 @@ class APIConnector:
         end_corrected = end_dt.replace(day=last_day_month)
         end_corrected.strftime("%Y-%m-%d")
 
-        logging.info("Downloading data from EODHD ...")
         try:
             data = eodhd.download_multi(
                 tickers=tickers, start=start, end=end_corrected, period=period
