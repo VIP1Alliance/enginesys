@@ -133,7 +133,7 @@ class FileManager:
             logging.error(f"An error occurred while exporting figures: {str(e)}")
 
     def export_to_excel(
-        self, df: pd.DataFrame, file_name: str, date: str, folder_name: str = None
+        self, df: pd.DataFrame, file_name: str, date: str = None, folder_name: str = None
     ) -> None:
         """
         Export the given DataFrame to an Excel file.
@@ -159,8 +159,11 @@ class FileManager:
             If an error occurs while exporting the data.
         """
         try:
-            formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
-            file_name = f"{file_name}_{formated_date}.xlsx"
+            if date:
+                formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
+                file_name = f"{file_name}_{formated_date}.xlsx"
+            else:
+                file_name = f"{file_name}.xlsx"
 
             folder_path = (
                 os.path.join(self.output_data_path, folder_name)
