@@ -29,47 +29,6 @@ class FileManager:
         os.makedirs(self.output_data_path, exist_ok=True)
         logging.info(f"Defined Output folder in: '{self.output_data_path}'")
 
-    def read_data(self, file_name: str, format: str = "pickle") -> pd.DataFrame:
-        """
-        Reads data from a file.
-
-        Parameters
-        ----------
-        file_name: str
-            The name of the file to read.
-        format: str, optional
-            The format of the file. Defaults to "pickle".
-
-        Returns
-        -------
-        pandas.DataFrame:
-            The loaded data.
-
-        Raises
-        -------
-        FileNotFoundError
-            If the file does not exist.
-        ValueError
-            If the format is not supported.
-        """
-        file_path = os.path.join(self.input_data_path, file_name)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"The file '{file_name}' was not found in the path '{self.input_data_path}'"
-            )
-        if format == "pickle":
-            data = pd.read_pickle(file_path)
-        elif format == "excel":
-            data = pd.read_excel(file_path)
-        elif format == "csv":
-            data = pd.read_csv(file_path)
-        else:
-            raise ValueError(f"Unsupported format: '{format}'")
-
-        logging.info(f"Data loaded from file '{file_name}'")
-
-        return data
-
     def export_figures(
         self, strategy_figs: dict, date: str, to_zip: bool = False
     ) -> None:
