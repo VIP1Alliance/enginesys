@@ -9,6 +9,16 @@ import pandas as pd
 class FileManager:
 
     def __init__(self, data_path: str):
+        """
+        Initializes a FileManager object
+
+        Parameters
+        ------
+        data_path: str
+            The path to the main data directory
+
+        """
+        # Rest of the code...
         self.data_path = data_path
         self.input_data_path = os.path.join(self.data_path, "input")
         self.output_data_path = os.path.join(self.data_path, "output")
@@ -18,47 +28,6 @@ class FileManager:
         logging.info(f"Defined Input folder in: '{self.input_data_path}'")
         os.makedirs(self.output_data_path, exist_ok=True)
         logging.info(f"Defined Output folder in: '{self.output_data_path}'")
-
-    def read_data(self, file_name: str, format: str = "pickle") -> pd.DataFrame:
-        """
-        Reads data from a file.
-
-        Parameters
-        ----------
-        file_name: str
-            The name of the file to read.
-        format: str, optional
-            The format of the file. Defaults to "pickle".
-
-        Returns
-        -------
-        pandas.DataFrame:
-            The loaded data.
-
-        Raises:
-        -------
-        FileNotFoundError
-            If the file does not exist.
-        ValueError
-            If the format is not supported.
-        """
-        file_path = os.path.join(self.input_data_path, file_name)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"The file '{file_name}' was not found in the path '{self.input_data_path}'"
-            )
-        if format == "pickle":
-            data = pd.read_pickle(file_path)
-        elif format == "excel":
-            data = pd.read_excel(file_path)
-        elif format == "csv":
-            data = pd.read_csv(file_path)
-        else:
-            raise ValueError(f"Unsupported format: '{format}'")
-
-        logging.info(f"Data loaded from file '{file_name}'")
-
-        return data
 
     def export_figures(
         self, strategy_figs: dict, date: str, to_zip: bool = False
@@ -123,7 +92,7 @@ class FileManager:
             logging.error(f"An error occurred while exporting figures: {str(e)}")
 
     def export_to_excel(
-        self, df: pd.DataFrame, file_name: str, date: str, folder_name: str = None
+        self, df: pd.DataFrame, file_name: str, date: str = None, folder_name: str = None
     ) -> None:
         """
         Export the given DataFrame to an Excel file.
@@ -149,8 +118,11 @@ class FileManager:
             If an error occurs while exporting the data.
         """
         try:
-            formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
-            file_name = f"{file_name}_{formated_date}.xlsx"
+            if date:
+                formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
+                file_name = f"{file_name}_{formated_date}.xlsx"
+            else:
+                file_name = f"{file_name}.xlsx"
 
             folder_path = (
                 os.path.join(self.output_data_path, folder_name)
