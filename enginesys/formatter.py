@@ -84,9 +84,6 @@ class Formatter:
             The DataFrame with a validated index.
         """
         if not isinstance(data_df.index, pd.DatetimeIndex):
-            logging.info(
-                "Converting index of loaded DataFrame to 'datetime' ..."
-            )
             if isinstance(data_df.index, pd.PeriodIndex):
                 formated_index = data_df.index.to_timestamp()
             elif isinstance(data_df.index, pd.Index):
