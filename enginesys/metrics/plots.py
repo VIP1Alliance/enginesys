@@ -1,6 +1,11 @@
+import calendar
+import locale
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+
+locale.setlocale(locale.LC_ALL, 'es_ES.UTF-8')
 
 
 def plot_hist_index(log_variation, strategy, metrics_df, num_bins=10):
@@ -123,3 +128,164 @@ def plot_risk_metrics(log_variation_df: pd.DataFrame, risk_metrics_df: pd.DataFr
         strategy_plot = plot_hist_index(log_variation_df, strategy, risk_metrics_df)
         behavior_histograms[strategy] = strategy_plot
     return behavior_histograms
+
+def plot_seasonality(df: pd.DataFrame) -> None:
+    
+    # Transpose seasonality_df to have months as rows
+    df = df.copy()
+    df = df.rename(index=lambda x: calendar.month_name[x].title())
+
+    metric_labels = {
+        "performance_alg": "Rendimiento Esperado",
+        "max_loss": "Pérdida Máxima",
+        "math_expectation": "Esperanza Matemática",
+    }
+
+    # Create figure
+    fig = go.Figure()
+
+    # Add traces, one for each metric
+    for metric in df.columns:
+        fig.add_trace(
+            go.Bar(
+                x=df.index, 
+                y=df[metric], 
+                name=metric_labels.get(metric, metric)  # Meses  # Valores para cada métrica
+            )
+        )
+
+    # Update Layout 
+    fig.update_layout(
+        barmode="stack",  # Modo apilado
+        title="Estacionalidad del Algoritmo",
+        yaxis_title="Valores",
+        legend_title="Métricas de retorno esperado",
+        xaxis_tickangle=-45,  # Rotate x-axis labels
+        height=550,  # Figure Height
+        width=950,  # Figure Width
+        title_x=0.5,  # Center the title
+        template="plotly_white",  # Dark Theme
+    )
+
+    return fig
+
+def plot_candlestick(prices_df, symbol):
+    
+    ticker_df = prices_df.xs(symbol, axis=1, level=1).dropna()
+    
+    # Create the figure with the candlestick chart
+    fig = go.Figure(data=[go.Candlestick(
+        x=ticker_df.index,
+        open=ticker_df['open'],
+        high=ticker_df['high'],
+        low=ticker_df['low'],
+        close=ticker_df['close']
+    )])
+
+    # Customize the figure layout
+    fig.update_layout(
+        title={
+            "text": symbol,
+            "y": 0.9,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+            "font": dict(family="Arial", size=24),
+        },
+        yaxis_title='Price',
+        xaxis_title='Date',
+        xaxis_rangeslider_visible=False,
+        template="plotly_dark",
+        height=500,
+        width=1100,
+    )
+
+    # return the figure
+    return fig
+
+def plot_historical_vars(historical_dates, log_variations_dict, hist_risk_df):
+    # TODO: Completar la función para la implementación del VaR histórico
+    strategy = "Algoritmo GEA"
+    n_dates = 7
+    dates = historical_dates[:n_dates]
+
+    # Crear la figura
+    fig = go.Figure()
+
+    max_values = []
+    min_values = []
+    # Añadir un trace de dispersión para cada día
+    for date_i in dates:
+        log_variations_df = log_variations_dict[date_i]
+        strat_log_variations_df = log_variations_df[strategy]
+        dates_i = [pd.to_datetime(date_i)] * len(log_variations_df)
+        max_values.append(strat_log_variations_df.max())
+        min_values.append(strat_log_variations_df.min())
+        # fig.add_trace(
+        #     go.Box(
+        #         x=dates_i,
+        #         y=log_variations_df["Algoritmo GEA"],
+        #         name=dia.strftime("%d-%m"),
+        #         boxpoints="all",
+        #         jitter=0.5,
+        #         whiskerwidth=0.2,
+        #         marker_size=2,
+        #         line_width=1,
+        #         showlegend=False,  # Ocultar estos de la leyenda
+        #     )
+        # )
+        fig.add_trace(
+            go.Violin(
+                x=dates_i,
+                y=strat_log_variations_df,
+                name="Distribución del Riesgo",
+                box_visible=True,
+                meanline_visible=False,
+                points="all",
+                jitter=0.05,
+                pointpos=-0.9,
+                marker=dict(size=2),
+                showlegend=False,
+            )
+        )
+
+
+    strat_risk_df = hist_risk_df[hist_risk_df["strategy"] == strategy]
+    strat_risk_df = strat_risk_df[strat_risk_df["date"].isin(historical_dates[:n_dates])]
+
+    # Añadir la línea de promedio
+    fig.add_trace(
+        go.Scatter(
+            x=strat_risk_df["date"],
+            y=strat_risk_df["VaR"],
+            mode="markers",
+            name="VaR Diario",
+            line=dict(color="black", width=2),
+            marker=dict(size=8, symbol="square", color="black"),
+        )
+    )
+
+    # Personalizar el diseño
+    fig.update_layout(
+        title="Dispersión Diaria de la variación logarítmica de la estrategia",
+        xaxis_title="date",
+        yaxis_title="VaR",
+        showlegend=True,
+        # xaxis_tickformat="%d-%m",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        template="plotly_white",
+        height=600,
+        width=1100,
+    )
+
+    log_variations_dict[date_i]
+    # Ajustar el rango del eje y para mejor visualización
+    # fig.update_yaxes(
+    #     range=[
+    #         min(min_values) + 0.5 * min(min_values),
+    #         max(max_values) + 0.5 * max(max_values),
+    #     ]
+    # )
+
+    # Mostrar la figura
+    fig.show()

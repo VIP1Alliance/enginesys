@@ -1,4 +1,5 @@
 import logging
+import re
 
 import numpy as np
 import pandas as pd
@@ -13,13 +14,15 @@ pd.DataFrame()
 # ======================= Functions to calculate the GEA indices ======================== #
 # ======================================================================================= #
 
-class TradeProcessor:
 
+class TradesProcessor:
+    
     def __init__(self):
         pass
 
+    @staticmethod
     def split_trades_monthly(
-        self, trades_df: pd.DataFrame, open_date_column: str, close_date_column: str
+        trades_df: pd.DataFrame, open_date_column: str, close_date_column: str
     ):
         """
         Splits trades in the given DataFrame into monthly intervals based on the open and close dates.
@@ -53,11 +56,51 @@ class TradeProcessor:
         splitted_trades_df = aux_df.explode("date", ignore_index=True)
         return splitted_trades_df
 
+    @staticmethod
+    def get_prices(prices_df: pd.DataFrame, tickers: list, dates: list) -> tuple:
+        """
+        Extract close and open prices for given tickers and dates. If a price is not found, it is set to None.
+
+        Parameters
+        ----------
+        prices_df : pd.DataFrame
+            DataFrame containing adjusted close prices with dates as indices and tickers as columns.
+        tickers : list
+            List of ticker symbols.
+        dates : list
+            List of dates in 'YYYY-MM-DD' format.
+
+        Returns
+        -------
+        tuple
+            Two lists containing the close and open prices respectively.
+        """
+        open_prices = []
+        close_prices = []
+
+        for ticker, date in zip(tickers, dates):
+            try:
+                close_date = date
+                open_date = date - relativedelta(months=1)
+                open_price = prices_df.loc[open_date, ticker]
+                close_price = prices_df.loc[close_date, ticker]
+            except KeyError as e:
+                logging.error(
+                    f"Ticker price ({ticker}) for date ({close_date}) was not found in the price table: Error: {e}"
+                )
+                open_price, close_price = None, None
+
+            open_prices.append(open_price)
+            close_prices.append(close_price)
+
+        return open_prices, close_prices
+
+    @classmethod
     def assing_prices(
-        self, trades_df: pd.DataFrame, prices_df: pd.DataFrame
+        cls, trades_df: pd.DataFrame, prices_df: pd.DataFrame
     ) -> pd.DataFrame:
         """
-        Assigns open and close prices to each trade based on the trade date and ticker symbol. 
+        Add columns with open and close prices to each trade based on the trade date and ticker symbol.
         If a price is not found, it is set to None.
 
         Parameters
@@ -72,49 +115,11 @@ class TradeProcessor:
         Returns
         -------
         pd.DataFrame
-            DataFrame with trade information and corresponding open and close prices.
+            A copy of the Trades DataFrame with the Open and Close price columns added.
         """
 
-        def get_prices(prices_df: pd.DataFrame, tickers: list, dates: list) -> tuple:
-            """
-            Extract close and open prices for given tickers and dates. If a price is not found, it is set to None.
-
-            Parameters
-            ----------
-            prices_df : pd.DataFrame
-                DataFrame containing adjusted close prices with dates as indices and tickers as columns.
-            tickers : list
-                List of ticker symbols.
-            dates : list
-                List of dates in 'YYYY-MM-DD' format.
-
-            Returns
-            -------
-            tuple
-                Two lists containing the close and open prices respectively.
-            """
-            open_prices = []
-            close_prices = []
-
-            for ticker, date in zip(tickers, dates):
-                try:
-                    close_date = date
-                    open_date = date - relativedelta(months=1)
-                    open_price = prices_df.loc[open_date, ticker]
-                    close_price = prices_df.loc[close_date, ticker]
-                except KeyError as e:
-                    logging.error(
-                        f"Ticker price ({ticker}) for date ({close_date}) was not found in the price table: Error: {e}"
-                    )
-                    open_price, close_price = None, None
-
-                open_prices.append(open_price)
-                close_prices.append(close_price)
-
-            return open_prices, close_prices
-
         trades_df = trades_df.copy()
-        open_prices, close_prices = get_prices(
+        open_prices, close_prices = cls.get_prices(
             prices_df, tickers=trades_df["ticker"], dates=trades_df["date"]
         )
 
@@ -122,9 +127,10 @@ class TradeProcessor:
 
         return trades_df
 
-    def compute_variations(self, trades_df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def compute_variations(trades_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Calculate the variation rate for each trade based on the open and close prices and the trade side.
+        Add column with the variation rate for each trade based on the open and close prices and the trade side.
 
         Parameters
         ----------
@@ -147,15 +153,15 @@ class TradeProcessor:
 
         return trades_df
 
+    @staticmethod
     def assign_weights(
-        self,
         trades_df: pd.DataFrame,
         strategy_weights: dict,
         total_investment: float,
     ) -> pd.DataFrame:
         """
         Calculate the weights for each trade based on the strategy weights and the total investment amount.
-        The weights are calculated based on the number of trades per month for each strategy. 
+        The weights are calculated based on the number of trades per month for each strategy.
         The global and local weights are also calculated.
 
         Parameters
@@ -172,7 +178,7 @@ class TradeProcessor:
         pd.DataFrame
             DataFrame with the weights assigned to each trade.
         """
-        # Generate montly data for each strategy.
+        # Generate monthly data for each strategy.
         strategy_trades_dfs = []
         for strategy in trades_df["strategy"].unique():
             strategy_trades_df = trades_df[trades_df["strategy"] == strategy].copy()
@@ -185,7 +191,7 @@ class TradeProcessor:
             trades_by_month = strategy_trades_df.groupby("date").size()
 
             # Add global and local weights columns
-            strategy_trades_df["allocation"] = strategy_trades_df["date"].apply(
+            strategy_trades_df["assignment"] = strategy_trades_df["date"].apply(
                 lambda x: strategy_investment / trades_by_month[x]
             )
             strategy_trades_df["weight_by_strategy(%)"] = strategy_trades_df[
@@ -217,8 +223,8 @@ class TradeProcessor:
         close_date_column: str,
     ) -> pd.DataFrame:
         """
-        Generate a monthly trades dataset based on the given parameters. The dataset will contain the 
-        trades data, prices data, strategy weights, investment amount, and date range for filtering trades. 
+        Generate a monthly trades dataset based on the given parameters. The dataset will contain the
+        trades data, prices data, strategy weights, investment amount, and date range for filtering trades.
         The dataset will be used to calculate the monthly performance of the trading strategies.
 
         Parameters
@@ -245,16 +251,29 @@ class TradeProcessor:
         pd.DataFrame
             DataFrame containing the generated monthly trades dataset.
         """
-        monthly_trades_df = self.split_trades_monthly(trades_df, open_date_column, close_date_column)
-        monthly_trades_df = monthly_trades_df[(monthly_trades_df["date"] >= init_date) & (monthly_trades_df["date"] <= end_date)]
+        monthly_trades_df = self.split_trades_monthly(
+            trades_df, open_date_column, close_date_column
+        )
+        logging.info(
+            f"Monthly trades dataset generated with {len(monthly_trades_df)} trades."
+        )
+        monthly_trades_df = monthly_trades_df[
+            (monthly_trades_df["date"] >= init_date)
+            & (monthly_trades_df["date"] <= end_date)
+        ]
         monthly_trades_df = self.assing_prices(monthly_trades_df, prices_df)
+        logging.info(f"Prices assigned to the trades dataframe.")
         monthly_trades_df = self.compute_variations(monthly_trades_df)
-        monthly_trades_df = self.assign_weights(monthly_trades_df, strategy_weights, investment)
+        logging.info(f"Variations computed for the trades dataframe.")
+        monthly_trades_df = self.assign_weights(
+            monthly_trades_df, strategy_weights, investment
+        )
+        logging.info(f"Weights assigned to the trades dataframe.")
         monthly_trades_df = monthly_trades_df.reset_index(drop=True)
         return monthly_trades_df
 
+    @staticmethod
     def truncate_by_period(
-        self,
         data: pd.DataFrame,
         date_column_name: str = "",
         period_type="year",
@@ -302,8 +321,8 @@ class TradeProcessor:
         else:
             raise ValueError("Period type should be either 'year' or 'month'")
 
-        total_mounths = n_periods * months_multiplier
-        new_init_date = last_date - pd.DateOffset(months=total_mounths)
+        total_months = n_periods * months_multiplier
+        new_init_date = last_date - pd.DateOffset(months=total_months)
         truncated_data = data[date_column >= new_init_date]
 
         if not date_column_name:
@@ -311,3 +330,260 @@ class TradeProcessor:
 
         truncated_data = truncated_data.reset_index(drop=True)
         return truncated_data
+    
+    # ================================================================================= #
+    # =================== Functions for historical analysis indices =================== #
+    # ================================================================================= #
+    
+    @staticmethod
+    def close_keep_position(data: pd.DataFrame, duration, decision):
+        """
+        Close or keep positions based on the decision.
+
+        Parameters
+        ----------
+        data : DataFrame
+            DataFrame containing the data to be processed.
+        duration : Series
+            Series containing the duration of the positions.
+        decision : str
+            Decision to either 'close' or 'keep' the positions.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame containing the positions to be closed or kept.
+        """
+        try:
+            if decision == "close":
+                df = duration.loc[duration < np.timedelta64(32, "D")]
+            elif decision == "keep":
+                df = duration.loc[duration > np.timedelta64(32, "D")]
+            else:
+                raise ValueError("Decision should be either 'close' or 'keep'")
+
+            df1 = data.loc[list(df.index)]
+            logging.info(f"Positions to {decision} have been successfully processed.")
+            return df1
+
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+            raise
+
+    @staticmethod
+    def strategy_weights(
+        data: pd.DataFrame,
+        strategies: list,
+    ):
+        """
+        Assign weights to different strategies based on the number of tickers.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing the data to be processed.
+        strategies : list, optional
+            List of strategies to be considered. Default is ["R Cuadrado", "Rotación Alfa", "Rotación de Momentum Sectorial"].
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with weights assigned to the strategies.
+        """
+        data = data.copy()
+        tickers_per_strategy = data["strategy"].value_counts()
+
+        for strategy in strategies:
+            try:
+                n_ = tickers_per_strategy.loc[strategy]
+                data.loc[data["ticker"] == strategy, "ticker_strategy_weight_pct"] = (
+                    round(100 / n_, 2)
+                )
+                logging.info(
+                    f"Assigned weights for strategy: {strategy}, number of tickers: {n_}"
+                )
+            except KeyError:
+                logging.warning(f"Strategy {strategy} not found in the data.")
+                continue
+        return data
+
+    @staticmethod
+    def sector_weights(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate and assign sector weights for each strategy in the data.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing the data to be processed.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with sector weights assigned for each strategy.
+        """
+        strat_sect_weigths = data.groupby(["strategy", "sector"]).size()
+        data["sector_weight_strategy"] = data.apply(
+            lambda row: row["ticker_strategy_weight_pct"]
+            * strat_sect_weigths[row["strategy"], row["sector"]],
+            axis=1,
+        )
+        return data
+
+    @classmethod
+    def gen_operation_month(cls, backtesting_df: pd.DataFrame, strategies: list):
+
+        date_open_trade = backtesting_df["date_open_next_month"].sort_values().unique()
+
+        liquidar_ = []
+        keep_ = []
+        operation_month = {}
+        for index, date in enumerate(date_open_trade):
+            # Identify new operations for the month
+            current_operation = backtesting_df.loc[
+                backtesting_df["date_open_next_month"] == date_open_trade[index]
+            ]
+            if index == 0:
+                duration = (
+                    current_operation["date_close_next_month"]
+                    - current_operation["date_open_next_month"]
+                )
+
+                # Positions to liquidate
+                liquidar_.append(
+                    cls.close_keep_position(
+                        data=current_operation, duration=duration, decision="close"
+                    )
+                )
+
+                # Positions to keep for the next month
+                keep_.append(
+                    cls.close_keep_position(
+                        data=current_operation, duration=duration, decision="keep"
+                    )
+                )
+
+                # ------------- STRATEGY WEIGHT
+                current_operation = cls.strategy_weights(data=current_operation, strategies=strategies)
+                
+                # ------------- SECTOR WEIGHT IN THE MODEL
+                current_operation = cls.sector_weights(data=current_operation)
+
+                operation_month[str(date).split(" ")[0]] = (
+                    current_operation  # this line goes at the end
+                )
+            # 
+            else:
+                # Merge open positions from the previous month with the new ones
+                current_operation_updated = pd.concat(
+                    [keep_[index - 1], current_operation]
+                )
+
+                duration = (
+                    current_operation_updated["date_close_next_month"]
+                    - date_open_trade[index]
+                )
+
+                # Positions to liquidate
+                liquidar_.append(
+                    cls.close_keep_position(
+                        data=current_operation_updated,
+                        duration=duration,
+                        decision="close",
+                    )
+                )
+
+                # Positions to keep for the next month
+                keep_.append(
+                    cls.close_keep_position(
+                        data=current_operation_updated,
+                        duration=duration,
+                        decision="keep",
+                    )
+                )
+
+                # STRATEGY WEIGHT
+                current_operation_updated = cls.strategy_weights(
+                    data=current_operation_updated, 
+                    strategies=strategies
+                )
+
+                # SECTOR WEIGHT IN THE MODEL
+                current_operation_updated = cls.sector_weights(
+                    data=current_operation_updated
+                )
+
+                operation_month[str(date).split(" ")[0]] = (
+                    current_operation_updated  # esta linea va al final
+                )
+
+        return operation_month
+
+
+class PricesProcessor:
+    
+    @staticmethod
+    def tag_prices(
+        trades_df: pd.DataFrame, 
+        prices_df: pd.DataFrame,
+        levels: list = ["strategy", "side", "ticker"],
+    ) -> pd.DataFrame:
+        """
+        Tag prices DataFrame with multiindex columns based on trades information.
+
+        Parameters
+        ----------
+        trades_df: pd.DataFrame
+            DataFrame containing trades information with columns 'strategy', 'side', and 'ticker'.
+        prices_df: pd.DataFrame
+            DataFrame containing prices data with multi-index columns corresponding to tickers.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with tagged prices, indexed by strategy, side, and ticker.
+        """
+        required_cols_trades = set(levels)
+        if "ticker" not in required_cols_trades:
+            required_cols_trades.add("ticker")
+        if not required_cols_trades.issubset(trades_df.columns):
+            missing_cols = required_cols_trades - set(trades_df.columns)
+            raise ValueError(
+                f"trades_df must contain the following columns: {', '.join(required_cols_trades)}. The following are missing: {', '.join(missing_cols)}."
+            )
+
+        tickers_df = trades_df[levels].sort_values(by=levels)
+        multi_index_prices = pd.MultiIndex.from_frame(tickers_df, names=levels)
+
+        try:
+            tag_prices_df = prices_df[multi_index_prices.get_level_values("ticker")]
+        except KeyError as e:
+            raise KeyError(f"Prices DataFrame does not contain the required tickers: {e}")
+        logging.info("Prices DataFrame tagged successfully")
+        tag_prices_df.columns = multi_index_prices
+        
+        return tag_prices_df.sort_index(axis=1)
+
+    @staticmethod
+    def fill_missing_prices(prices_df1, prices_df2):
+        """
+        Fill missing prices in prices_df1 with corresponding values from prices_df2.
+        Missing prices are identified as zeros and NaNs in prices_df1.
+
+        Parameters
+        ----------
+        prices_df1: pd.DataFrame
+            The DataFrame containing prices with missing values.
+        prices_df2: pd.DataFrame
+            The DataFrame containing prices to fill the missing values.
+
+        Returns
+        -------
+        DataFrame:
+            The DataFrame with missing prices filled using values from prices_df2.
+        """
+
+        # Fill missing prices in prices_df1 with corresponding values from prices_df2
+        filled_prices_df1 = prices_df1.replace(0, np.nan).fillna(prices_df2)
+
+        return filled_prices_df1
