@@ -2,7 +2,7 @@
 import os
 import logging
 import warnings
-from typing import Tuple, List, Optional
+from typing import Tuple
 
 import pandas as pd
 import numpy as np
