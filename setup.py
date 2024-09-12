@@ -6,7 +6,7 @@ with open(directory / "README.md", encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name="enginesys",
-      version="0.0.10",
+      version="1.0.0", 
       description="Enginesys is software for financial portafolio analisys.",
       author=['Sebastian Rojas', 'Jonathan Díaz'],
       long_description=long_description,
