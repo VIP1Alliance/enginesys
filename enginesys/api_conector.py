@@ -142,8 +142,8 @@ class APIConnector:
     def _fetch_yf_prices(
         update_time: str,
         tickers: Tuple[str, ...], 
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        start: Optional[Union[str, datetime]] = None,
+        end: Optional[Union[str, datetime]] = None,
         period: Optional[str] = "1mo", 
     ) -> pd.DataFrame:
         """
@@ -240,8 +240,8 @@ class APIConnector:
     def fetch_yf_prices(
         cls, 
         tickers: Union[str, List[str]], 
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        start: Optional[Union[str, datetime]] = None,
+        end: Optional[Union[str, datetime]] = None,
         period: Optional[str] = "1mo", 
         update_mins: Optional[int] = None,
     ) -> pd.DataFrame:
