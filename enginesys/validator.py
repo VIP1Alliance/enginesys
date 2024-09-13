@@ -96,6 +96,7 @@ class Validator:
             zero_prices : list
                 A list of tickers with prices equal to 0.0.
         """
+        date = date.replace(hour=0, minute=0, second=0)
         prices_date = prices_df.loc[date]
         if prices_date.isna().any() or (prices_date == 0).any():
             null_prices = list(prices_date[prices_date.isna()].index)
