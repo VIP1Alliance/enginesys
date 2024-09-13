@@ -1,9 +1,6 @@
 import logging
 import os
-import zipfile
-from datetime import datetime
-
-import pandas as pd
+import shutil
 
 
 class FileManager:
@@ -18,7 +15,7 @@ class FileManager:
             The path to the main data directory
 
         """
-        # Rest of the code...
+        
         self.data_path = data_path
         self.input_data_path = os.path.join(self.data_path, "input")
         self.output_data_path = os.path.join(self.data_path, "output")
@@ -29,8 +26,12 @@ class FileManager:
         os.makedirs(self.output_data_path, exist_ok=True)
         logging.info(f"Defined Output folder in: '{self.output_data_path}'")
 
-    def export_figures(
-        self, strategy_figs: dict, date: str, to_zip: bool = False
+    def export_var_plots(
+        self, 
+        strategy_figs: dict, 
+        folder_path: str, 
+        to_zip: bool = False, 
+        date: str = None,
     ) -> None:
         """
         Export the given strategy figures to either a folder or a zip file.
@@ -54,86 +55,29 @@ class FileManager:
         Exception: 
             If an error occurs while exporting the figures.
         """
-        try:
-            formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
-            folder_name = "risk_plots"
-            os.makedirs(os.path.join(self.output_data_path, folder_name), exist_ok=True)
-            figs_path = os.path.join(
-                self.output_data_path, folder_name, f"riesgo_{formated_date}"
-            )
-            if to_zip:
-                zip_path = f"{figs_path}.zip"
-                with zipfile.ZipFile(zip_path, "w") as zipf:
-                    for strategy, fig in strategy_figs.items():
-                        fig_name = f"{strategy.replace(' ', '_').lower()}_var_{formated_date}.png"
-                        fig.write_image(fig_name)
-                        zipf.write(fig_name)
-                        os.remove(fig_name)
-                parent_folder, file_name = os.path.split(zip_path)
-                rel_file_path = os.path.join(os.path.basename(parent_folder), file_name)
-                logging.info(f"Plots exported successfully to file '{rel_file_path}'")
-                return zip_path
-            else:
-                os.makedirs(figs_path, exist_ok=True)
-                for strategy, fig in strategy_figs.items():
-                    fig_name = (
-                        f"{strategy.replace(' ', '_').lower()}_var_{formated_date}.png"
-                    )
-                    figure_path = os.path.join(figs_path, fig_name)
-                    fig.write_image(figure_path)
-                parent_folder, name = os.path.split(os.path.normpath(figs_path))
-                rel_folder_path = os.path.join(os.path.basename(parent_folder), name)
-                logging.info(
-                    f"Plots exported successfully to folder '{rel_folder_path}'"
-                )
-                return figs_path
-
-        except Exception as e:
-            logging.error(f"An error occurred while exporting figures: {str(e)}")
-
-    def export_to_excel(
-        self, df: pd.DataFrame, file_name: str, date: str = None, folder_name: str = None
-    ) -> None:
-        """
-        Export the given DataFrame to an Excel file.
+        # try:
+        if date:
+            figs_path = os.path.join(folder_path, f"riesgo_{date}")
+        else:
+            figs_path = os.path.join(folder_path, "riesgo")
         
-        Parameters
-        ----------
-        df: pd.DataFrame
-            The DataFrame to be exported.
-        file_name: str
-            The name of the Excel file.
-        date: str
-            The date in the format 'YYYY-MM-DD'.
-        folder_name: Optional[str]
-            The name of the folder to save the file in. Defaults to None.
-        
-        Returns
-        -------
-        None
-        
-        Raises
-        -------
-        ValueError
-            If an error occurs while exporting the data.
-        """
-        try:
+        # Crear la carpeta si no existe
+        os.makedirs(figs_path, exist_ok=True)  
+        for strategy, fig in strategy_figs.items():
             if date:
-                formated_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d_%m_%Y")
-                file_name = f"{file_name}_{formated_date}.xlsx"
+                fig_name = f"{strategy.replace(' ', '_').lower()}_var_{date}.png"
             else:
-                file_name = f"{file_name}.xlsx"
+                fig_name = f"{strategy.replace(' ', '_').lower()}_var.png"
+            figure_path = os.path.join(figs_path, fig_name)
+            print(figure_path)
+            fig.write_image(figure_path)
+            
+        if to_zip:
+            shutil.make_archive(figs_path, 'zip', figs_path)
+            shutil.rmtree(figs_path)
+            figs_path = figs_path + ".zip"
+            
+        logging.info(f"Plots exported successfully to folder '{figs_path}'")
 
-            folder_path = (
-                os.path.join(self.output_data_path, folder_name)
-                if folder_name
-                else self.output_data_path
-            )
-
-            os.makedirs(folder_path, exist_ok=True)
-            file_path = os.path.join(folder_path, file_name)
-            df.to_excel(file_path)
-            logging.info(f"Data exported successfully to file '{file_name}'")
-            return folder_path
-        except Exception as e:
-            raise ValueError(f"An error occurred while exporting data: {str(e)}")
+        # except Exception as e:
+        #     logging.error(f"An error occurred while exporting figures: {str(e)}")
