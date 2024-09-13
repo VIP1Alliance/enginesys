@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import pandas.testing as pdt
 
-from enginesys.api_conector import APIConnector
+from enginesys.api_connector import APIConnector
 
 
 class TestAPIConnector(unittest.TestCase):
