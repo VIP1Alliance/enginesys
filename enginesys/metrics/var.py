@@ -1,3 +1,4 @@
+import dis
 import logging
 
 import numpy as np
@@ -14,9 +15,10 @@ logging.basicConfig(
     
 class ValueAtRisk:
 
-    def __init__(self, trades_df: pd.DataFrame, prices_df: pd.DataFrame):
+    def __init__(self, trades_df: pd.DataFrame, prices_df: pd.DataFrame, strategy_weights: pd.Series):
         self.tag_prices_df = PricesProcessor.tag_prices(trades_df, prices_df)
         self.trades_df = trades_df
+        self.strategy_weights = strategy_weights
         self.price_variations_df = pd.DataFrame()
         self.strategy_indices_df = pd.DataFrame()
         self.strategies_variation_df = pd.DataFrame()
@@ -246,7 +248,11 @@ class ValueAtRisk:
         return indices_df[1:]
 
     @classmethod
-    def get_var_cov_algo_matrix(cls, strategy_indices_df: pd.DataFrame) -> pd.DataFrame:
+    def get_var_cov_algo_matrix(
+        cls, 
+        strategy_indices_df: pd.DataFrame,
+        strategy_weights: pd.Series,
+    ) -> pd.DataFrame:
         """
         Calculate the variance-covariance matrix for the algorithm based on strategy indices.
 
@@ -265,8 +271,8 @@ class ValueAtRisk:
             raise ValueError("No strategies found in strategy_indices_df")
 
         strats_variation_df = strategy_indices_df / strategy_indices_df.shift(1)
-        n_strategies = len(strategies)
-        strategy_weights = np.array([1 / n_strategies] * n_strategies)
+        # n_strategies = len(strategies)
+        # strategy_weights = np.array([1 / n_strategies] * n_strategies)
         excess_matrix_algorithm = strats_variation_df - strategy_weights
         var_cov_algo_matrix = excess_matrix_algorithm.cov()
         strategies_variation_df = cls.side_variations(strategy_indices_df)
@@ -316,7 +322,7 @@ class ValueAtRisk:
         return df_adjusted
 
     @classmethod
-    def var_from_matrix(cls, var_cov_algo_matrix: pd.DataFrame) -> float:
+    def var_from_matrix(cls, var_cov_algo_matrix: pd.DataFrame, strategy_weights: pd.Series) -> float:
         """
         Calculate the Value at Risk (VaR) from the variance-covariance matrix.
 
@@ -330,6 +336,7 @@ class ValueAtRisk:
         float
             Value at Risk (VaR) for the algorithm.
         """
+        
         strategies = list(var_cov_algo_matrix.columns)
         if len(strategies) == 0:
             raise ValueError("No strategies found in var_cov_algo_matrix")
@@ -338,20 +345,21 @@ class ValueAtRisk:
         if n_strategies == 0:
             raise ValueError("Number of strategies is zero")
 
-        strategy_weights = np.array([1 / 3] * n_strategies)
+        # strategy_weights = np.array([1 / 3] * n_strategies)
+        
+        # if len(strategy_weights) != (var_cov_algo_matrix.columns):
+        #     raise ValueError(
+        #         "Mismatch between number of strategies and dimensions of var_cov_algo_matrix"
+        #     )
 
-        if len(strategy_weights) != var_cov_algo_matrix.shape[0]:
-            raise ValueError(
-                "Mismatch between number of strategies and dimensions of var_cov_algo_matrix"
-            )
-
-        algorithm_variance = strategy_weights.dot(var_cov_algo_matrix).dot(strategy_weights)
+        filter_weights = strategy_weights[var_cov_algo_matrix.index]
+        algorithm_variance = filter_weights.dot(var_cov_algo_matrix).dot(filter_weights)
         if algorithm_variance < 0:
             logging.warning(
                 f"Negative Variance obtained for 'Gea Algorithm', converting covariance matrix to positive semidefinite ..."
             )
             var_cov_matrix_adjusted = cls.make_positive_semidefinite(var_cov_algo_matrix)
-            algorithm_variance = strategy_weights.dot(var_cov_matrix_adjusted).dot(strategy_weights)
+            algorithm_variance = filter_weights.dot(var_cov_matrix_adjusted).dot(filter_weights)
         
         # Calculate VaR
         algorithm_var = np.sqrt(algorithm_variance)
@@ -359,7 +367,7 @@ class ValueAtRisk:
         return algorithm_var
 
     @classmethod
-    def get_algorithm_var(cls, strategy_indices_df: pd.DataFrame) -> float:
+    def get_algorithm_var(cls, strategy_indices_df: pd.DataFrame, strategy_weights: pd.Series) -> float:
         """
         Calculate the Value at Risk (VaR) for the algorithm using strategy indices.
 
@@ -373,8 +381,9 @@ class ValueAtRisk:
         float
             Value at Risk (VaR) for the algorithm.
         """
-        var_cov_algo_matrix = cls.get_var_cov_algo_matrix(strategy_indices_df)
-        algorithm_var = cls.var_from_matrix(var_cov_algo_matrix)
+        filter_weights = strategy_weights[strategy_indices_df.columns]
+        var_cov_algo_matrix = cls.get_var_cov_algo_matrix(strategy_indices_df, filter_weights)
+        algorithm_var = cls.var_from_matrix(var_cov_algo_matrix, filter_weights)
         return algorithm_var
 
     @staticmethod
@@ -521,7 +530,7 @@ class ValueAtRisk:
         try:
             # Calculate the VaR and EWMA for the algorithm
             self.risk_metrics_df.loc["Algoritmo GEA"] = (
-                -self.get_algorithm_var(self.strategy_indices_df),
+                -self.get_algorithm_var(self.strategy_indices_df, self.strategy_weights),
                 self.get_algorithm_ewma(geom_index_alg),
             )
             logging.info("VaR and EWMA for the algorithm calculated successfully")
