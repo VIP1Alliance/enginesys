@@ -34,9 +34,7 @@ class APIConnector:
     
     
     @staticmethod
-    @lru_cache(maxsize=None)
-    def _fetch_eodhd_prices(
-        update_time: str, # This is used to cache the data
+    def fetch_eodhd_prices(
         tickers: Union[str, Tuple[str, ...]], 
         start: str, 
         end: str, 
@@ -85,62 +83,8 @@ class APIConnector:
             
         return data
     
-    @classmethod
-    def fetch_eodhd_prices(
-        cls, 
-        tickers: Union[str, List[str]], 
-        start: str,
-        end: str,
-        period: Optional[str] = "m",
-        complete_month: Optional[bool] = False,
-        update_mins: Optional[int] = None,
-    ) -> pd.DataFrame:
-        """
-        Fetches EODHD prices from the API.
-        
-        Parameters
-        ----------
-        tickers :Union[str, Tuple[str, ...]]
-            The tickers to fetch prices for.
-        start :str
-            The start date.
-        end :str
-            The end date.
-        period :Optional[str]
-            The period. Defaults to "m".
-        complete_month :Optional[bool]
-            Whether to fetch complete month data. Defaults to False.
-        update_mins :Optional[int]
-            The frequency to update the data in minutes. Defaults to None.
-        
-        Returns
-        -------
-            pd.DataFrame: The fetched data.
-        
-        Raises
-        ------
-            Exception: If there is an error downloading data from the EODHD API.
-        """
-        # Get the current time and round it to the nearest update_mins to get new data every update_mins minutes
-        if update_mins:
-            update_time = (
-                datetime.now()
-                .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
-                .strftime("%Y-%m-%d %H:%M")
-            )
-        # Modify the update time variable to get new data every second
-        else:
-            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if not isinstance(tickers, list) and not isinstance(tickers, str):
-            raise ValueError("Tickers must be a list of strings or a single string")
-        tickers = tickers if isinstance(tickers, list) else [tickers]
-        return cls._fetch_eodhd_prices(update_time, tuple(tickers), start, end, period, complete_month)
-    
     @staticmethod
-    @lru_cache(maxsize=None)
-    def _fetch_yf_prices(
-        update_time: str,
+    def fetch_yf_prices(
         tickers: Tuple[str, ...], 
         start: Optional[Union[str, datetime]] = None,
         end: Optional[Union[str, datetime]] = None,
@@ -236,57 +180,6 @@ class APIConnector:
         
         return yf_data
     
-    @classmethod
-    def fetch_yf_prices(
-        cls, 
-        tickers: Union[str, List[str]], 
-        start: Optional[Union[str, datetime]] = None,
-        end: Optional[Union[str, datetime]] = None,
-        period: Optional[str] = "1mo", 
-        update_mins: Optional[int] = None,
-    ) -> pd.DataFrame:
-        """
-        Fetches EODHD prices from the API.
-        
-        Parameters
-        ----------
-        tickers :Union[str, Tuple[str, ...]]
-            The tickers to fetch prices for.
-        start :str
-            The start date.
-        end :str
-            The end date.
-        period :Optional[str]
-            The period. Defaults to "m" (monthly).
-        update_mins :Optional[int]
-            The frequency to update the data in minutes. Defaults to None.
-        
-        Returns
-        -------
-        pd.DataFrame
-            The fetched data.
-        
-        Raises
-        ------
-        Exception: 
-            If there is an error downloading data from the EODHD API.
-        """
-        # Get the current time and round it to the nearest update_mins to get new data every update_mins minutes
-        if update_mins:
-            update_time = (
-                datetime.now()
-                .replace(minute=(datetime.now().minute // update_mins) * update_mins, second=0, microsecond=0)
-                .strftime("%Y-%m-%d %H:%M")
-            )
-        # Modify the update time variable to get new data every second
-        else:
-            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-        if not isinstance(tickers, list) and not isinstance(tickers, str):
-            raise ValueError("Tickers must be a list of strings or a single string")
-        tickers = tickers if isinstance(tickers, list) else [tickers]
-        return cls._fetch_yf_prices(update_time, tuple(tickers), start, end, period)
-
     def download_eodhd_prices(
         self, 
         file_name, 
