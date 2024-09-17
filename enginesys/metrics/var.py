@@ -68,7 +68,7 @@ class ValueAtRisk:
         """
         side_columns = prices_df.columns.get_level_values("side")
 
-        if not {"BUY", "SELL"}.issubset(side_columns):
+        if not ("BUY" in side_columns or "SELL" in side_columns):
             raise ValueError("prices_df must contain 'BUY' or 'SELL' sides in the columns")
 
         buy_prices_df = prices_df.loc[:, side_columns == "BUY"]
