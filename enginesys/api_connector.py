@@ -3,18 +3,17 @@ import logging
 import os
 import re
 from datetime import datetime
-from functools import lru_cache
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import pandas as pd
 import yfinance as yf
 
-import enginesys.eodhd.eodhd as eodhd
+from enginesys.eodhd.eodhd import DataFetcher
 
 
 class APIConnector:
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, api_key):
         """
         Initializes a APIConnector object
 
@@ -27,14 +26,15 @@ class APIConnector:
         self.data_path = data_path
         self.input_data_path = os.path.join(self.data_path, "input")
         self.output_data_path = os.path.join(self.data_path, "output")
+        self.data_fetcher = DataFetcher(api_key=api_key)
 
         os.makedirs(data_path, exist_ok=True)
         os.makedirs(self.input_data_path, exist_ok=True)
         os.makedirs(self.output_data_path, exist_ok=True)
     
     
-    @staticmethod
     def fetch_eodhd_prices(
+        self,
         tickers: Union[str, Tuple[str, ...]], 
         start: str, 
         end: str, 
@@ -75,7 +75,7 @@ class APIConnector:
             end_corrected.strftime("%Y-%m-%d")
 
         try:
-            data = eodhd.download_multi(
+            data = self.data_fetcher.download_multi(
                 tickers=tickers, start=start, end=end_corrected, period=period
             )
         except Exception as e:
@@ -222,7 +222,7 @@ class APIConnector:
         end_corrected.strftime("%Y-%m-%d")
 
         try:
-            data = eodhd.download_multi(
+            data = self.data_fetcher.download_multi(
                 tickers=tickers, start=start, end=end_corrected, period=period
             )
         except Exception as e:
