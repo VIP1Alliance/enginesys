@@ -8,18 +8,15 @@ import numpy as np
 import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_exponential)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 # Configuración del logging
-logging.basicConfig(
-    level=logging.INFO,  # Configurar para DEBUG para registrar todos los eventos
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("data_fetcher.log"),  # Archivo donde se registrarán los logs
-        logging.StreamHandler()  # Mostrar logs también en consola
-    ]
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class DataFetcher:
